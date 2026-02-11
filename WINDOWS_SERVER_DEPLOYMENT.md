@@ -29,6 +29,8 @@ If you want to **skip Oracle** and run the backend with the built-in **H2 in-mem
 4. **Restart the backend service:**  
    `nssm restart FastBackend`
 
+5. **Frontend must include `config.json`** in the deployed folder (same folder as `index.html`). The repo has `fast-frontend/public/config.json` with `"authMode": "local"` so the app **skips BAM** and uses `/users/me` with the backend. When you run `npm run build`, `config.json` is copied into `dist/`. If you already deployed without it, copy `fast-frontend/public/config.json` into your IIS site folder and reload the app.
+
 No database install, no Oracle config. H2 runs in memory and Flyway will create/seed tables on startup.
 
 ---

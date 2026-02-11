@@ -59,10 +59,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      if (isLocalEnv() || useLocalAuth()) {
+      // 1. Localhost / dev: use /users/me with X-Authenticated-User
+      if (isLocalEnv()) {
         await fetchCurrentUser();
         return;
       }
+      // 2. Runtime config (no rebuild): fetch config.json; if authMode === 'local', skip BAM
+      try {
+        const configRes = await fetch('/config.json', { cache: 'no-store' });
+        if (!cancelled && configRes.ok) {
+          const config = await configRes.json();
+          if (config?.authMode === 'local') {
+            await fetchCurrentUser();
+            return;
+          }
+        }
+      } catch {
+        // No config.json or parse error: continue to build-time check or BAM
+      }
+      // 3. Build-time flag VITE_AUTH_MODE=local (must be set when running npm run build)
+      if (useLocalAuth()) {
+        await fetchCurrentUser();
+        return;
+      }
+      // 4. BAM SSO
       try {
         const redirectURL = typeof window !== 'undefined' ? window.location.origin + '/api' : '';
         const bam = await authApi.getBamToken(BAM_APP_NAME, redirectURL);
