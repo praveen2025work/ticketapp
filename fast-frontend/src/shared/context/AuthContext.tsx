@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { AuthUser } from '../types';
 import { authApi } from '../api/authApi';
 import axiosClient, { getStoredToken, setStoredToken } from '../api/axiosClient';
-import { isLocalEnv } from '../utils/env';
+import { isLocalEnv, useLocalAuth } from '../utils/env';
 
 const BAM_APP_NAME = 'FORT';
 
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      if (isLocalEnv()) {
+      if (isLocalEnv() || useLocalAuth()) {
         await fetchCurrentUser();
         return;
       }
