@@ -1,0 +1,34 @@
+import axios from 'axios';
+import axiosClient from './axiosClient';
+import type { AdUser, AuthResponse, BamAuthResponse, LoginRequest } from '../types';
+
+const baseURL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') || '/api/v1';
+
+/** Call with credentials for Windows Auth (BAM/AD). No Bearer. */
+const axiosWithCredentials = axios.create({
+  baseURL,
+  withCredentials: true,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+export const authApi = {
+  /** Legacy login (local only) */
+  login: async (data: LoginRequest): Promise<AuthResponse> => {
+    const response = await axiosClient.post('/auth/login', data);
+    return response.data;
+  },
+
+  /** Get BAM token (Windows Auth). Call with credentials. */
+  getBamToken: async (appName: string, redirectURL: string): Promise<BamAuthResponse> => {
+    const response = await axiosWithCredentials.get<BamAuthResponse>('/bam/token', {
+      params: { appName, redirectURL },
+    });
+    return response.data;
+  },
+
+  /** Get current AD user (Windows Auth). Call with credentials. */
+  getAdUser: async (): Promise<AdUser> => {
+    const response = await axiosWithCredentials.get<AdUser>('/bam/ad-user');
+    return response.data;
+  },
+};

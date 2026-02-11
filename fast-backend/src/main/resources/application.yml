@@ -1,0 +1,51 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: fast-problem-ticket-system
+  profiles:
+    active: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+# CORS: set CORS_ALLOWED_ORIGINS env (comma-separated) to add Cloudflare/public URLs
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+
+# Application Configuration
+app:
+  auth:
+    mode: local  # Options: local, bam
+    local:
+      default-user: admin  # Default user for local development
+  jwt:
+    secret: FAST-Enterprise-JWT-Secret-Key-2026-Problem-Ticket-System-256bit-Key
+    expiration-ms: 86400000  # 24 hours
+
+# BAM SSO Configuration
+bam:
+  sso:
+    url: https://bamuat-auth.client.companycorp.com/authn/authenticate/sso/api
+  ad:
+    url: http://internal-host:5000/api/getADUsers
+  phonebook:
+    # Profile photo: {phonebook.url}?brid={employeeId}
+    url: ${BAM_PHONEBOOK_URL:}
+  app:
+    name: FORT
+    redirect-url: http://internal-app-server:8095/api
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method

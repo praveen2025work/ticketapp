@@ -1,0 +1,31 @@
+# Optional: create .env from .env.example and set CORS_ALLOWED_ORIGINS for Cloudflare URL
+services:
+  backend:
+    build:
+      context: ./fast-backend
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # From .env; add your Cloudflare URL (e.g. https://xxx.trycloudflare.com) to allow CORS
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1:5173}"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/", "||", "exit", "0"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./fast-frontend
+      dockerfile: Dockerfile
+      args:
+        # Set to your Cloudflare/public API URL when frontend is served via Cloudflare (e.g. https://api.yourdomain.com/api/v1). Leave empty for same-origin.
+        VITE_API_BASE_URL: ""
+    ports:
+      - "3080:80"
+    depends_on:
+      backend:
+        condition: service_started

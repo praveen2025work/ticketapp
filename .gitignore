@@ -1,0 +1,11 @@
+# Cloudflare tunnel binary
+.bin/
+
+# Env (may contain secrets)
+.env
+
+# Build outputs
+**/target/
+**/node_modules/
+**/dist/
+*.class
