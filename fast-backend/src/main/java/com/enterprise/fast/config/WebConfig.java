@@ -20,15 +20,30 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${cors.allowed-origins:}")
     private String corsAllowedOriginsEnv;
 
+    /**
+     * Add CORS origins here when deploying (e.g. Windows Server / IIS).
+     * These are merged with defaults and with CORS_ALLOWED_ORIGINS env.
+     * Example: "http://WIN-SERVER", "http://192.168.1.10", "https://fast.company.com"
+     */
+    private static final List<String> CORS_ORIGINS_IN_CODE = List.of(
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "http://localhost",
+            "http://localhost:80",
+            "http://127.0.0.1:5173"
+            // Add your frontend origin(s) here, e.g.:
+            // "http://WIN-SERVER",
+            // "http://YOUR-SERVER-NAME"
+    );
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        List<String> defaultOrigins = List.of("http://localhost:5173", "http://localhost:3000", "http://localhost", "http://localhost:80", "http://127.0.0.1:5173");
-        List<String> origins = defaultOrigins;
+        List<String> origins = CORS_ORIGINS_IN_CODE;
         if (StringUtils.hasText(corsAllowedOriginsEnv)) {
             origins = Stream.concat(
                     Arrays.stream(corsAllowedOriginsEnv.split(",")).map(String::trim).filter(StringUtils::hasText),
-                    defaultOrigins.stream()
+                    CORS_ORIGINS_IN_CODE.stream()
             ).distinct().collect(Collectors.toList());
         }
         config.setAllowedOrigins(origins);

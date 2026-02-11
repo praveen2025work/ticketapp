@@ -35,6 +35,43 @@ No database install, no Oracle config. H2 runs in memory and Flyway will create/
 
 ---
 
+## Fix CORS error (backend blocking frontend)
+
+If the browser shows a **CORS error** when the frontend calls the backend, the backend is not allowing your frontend’s **origin**. Fix it by adding that origin to the backend config.
+
+### 1. Get the exact origin
+
+The **origin** is: **scheme + host + port** of the page (no path, no trailing slash).
+
+- You open the app at `http://WIN-SERVER/app/` → origin is **`http://WIN-SERVER`** (port 80 is default).
+- You open at `http://192.168.1.10:8080` → origin is **`http://192.168.1.10:8080`**.
+- You open at `https://fast.company.com` → origin is **`https://fast.company.com`**.
+
+You can copy it from the browser address bar (scheme + host only if port is 80/443) or from the CORS error in DevTools (Network tab → failed request → it often shows the request’s Origin).
+
+### 2. Set it in NSSM
+
+1. Open **NSSM** → **Edit** the FastBackend service.
+2. Go to the **Environment** (or **Environment extra**) tab.
+3. Add or edit:
+   ```text
+   CORS_ALLOWED_ORIGINS=http://YOUR-SERVER-NAME
+   ```
+   Replace `http://YOUR-SERVER-NAME` with the **exact** origin from step 1 (e.g. `http://WIN-SERVER` or `http://192.168.1.10:8080`). No trailing slash.
+4. If you use the app from several URLs (e.g. with and without port), add all, comma-separated:
+   ```text
+   CORS_ALLOWED_ORIGINS=http://WIN-SERVER,http://WIN-SERVER:80,http://192.168.1.10
+   ```
+5. Click **Edit** / **Set** and then **Restart** the service (or run `nssm restart FastBackend`).
+
+### 3. Restart and test
+
+Restart the FastBackend service, then reload the frontend. The CORS error should go away if the origin matches exactly.
+
+**Common mistakes:** trailing slash (`http://server/`), wrong port, using `https` in config but opening with `http` (or the opposite). The value must match the browser origin **exactly**.
+
+---
+
 ## 1. Prerequisites
 
 ### On the machine where you build the frontend (any OS)
