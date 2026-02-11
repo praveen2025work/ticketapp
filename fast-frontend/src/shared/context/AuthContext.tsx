@@ -10,6 +10,8 @@ interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   loading: boolean;
+  /** True when using local auth (localhost or config authMode local). Role switcher is shown in header. */
+  showRoleSwitcher: boolean;
   logout: () => void;
 }
 
@@ -28,6 +30,7 @@ function mergeUserWithAd(base: AuthUser, ad: { displayName?: string; emailAddres
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
 
   const fetchCurrentUser = useCallback(async () => {
     try {
@@ -76,16 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // 1. Localhost / dev: use /users/me with X-Authenticated-User
       if (isLocalEnv()) {
+        setShowRoleSwitcher(true);
         await fetchCurrentUser();
         return;
       }
       // 2. Runtime config: if authMode === 'local', skip BAM
       if (config?.authMode === 'local') {
+        setShowRoleSwitcher(true);
         await fetchCurrentUser();
         return;
       }
       // 3. Build-time flag VITE_AUTH_MODE=local (must be set when running npm run build)
       if (useLocalAuth()) {
+        setShowRoleSwitcher(true);
         await fetchCurrentUser();
         return;
       }
@@ -126,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, showRoleSwitcher, logout }}>
       {children}
     </AuthContext.Provider>
   );

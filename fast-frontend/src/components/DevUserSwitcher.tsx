@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { isLocalEnv } from '../shared/utils/env';
-
-export { isLocalEnv };
+import { useAuth } from '../shared/context/AuthContext';
 
 /**
- * Local-only component to simulate different LDAP users.
- * Shown in header only on localhost; dev and prod use actual BAM authentication.
+ * Role switcher for local auth: simulate different users (admin, reviewer, etc.).
+ * Shown when app uses local auth (localhost or config.json authMode: local).
  */
 export default function DevUserSwitcher({ variant = 'header' }: { variant?: 'header' }) {
+    const { showRoleSwitcher } = useAuth();
     const [currentUser, setCurrentUser] = useState(
         typeof localStorage !== 'undefined' ? localStorage.getItem('dev_ldap_user') || 'admin' : 'admin'
     );
@@ -29,8 +28,7 @@ export default function DevUserSwitcher({ variant = 'header' }: { variant?: 'hea
         window.location.reload(); // Reload to apply new user
     };
 
-    // Only show on localhost; dev and prod use BAM auth
-    if (!isLocalEnv()) {
+    if (!showRoleSwitcher) {
         return null;
     }
 

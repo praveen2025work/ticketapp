@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../shared/context/AuthContext';
 import DevUserSwitcher from './DevUserSwitcher';
-import { isLocalEnv } from '../shared/utils/env';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard' },
@@ -14,7 +13,7 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, showRoleSwitcher } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -67,7 +66,7 @@ export default function Layout() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
-              {isLocalEnv() && (
+              {showRoleSwitcher && (
                 <DevUserSwitcher variant="header" />
               )}
               <div className="flex items-center gap-2 text-sm hidden sm:flex">
