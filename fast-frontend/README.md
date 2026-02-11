@@ -1,4 +1,25 @@
-# React + TypeScript + Vite
+# FAST Frontend
+
+React + TypeScript + Vite frontend for the FAST Problem Ticket System.
+
+## Backend API URL
+
+The frontend talks to the backend via **`VITE_API_BASE_URL`**. Update it in one of these ways:
+
+| Where | When to use |
+|-------|-------------|
+| **`.env`** in `fast-frontend/` | Copy from `.env.example`, set `VITE_API_BASE_URL=...`, then run `npm run build`. |
+| **`.env.production`** | Same as `.env` but only applied for production builds. |
+| **Shell when building** | `VITE_API_BASE_URL=https://api.server.com/api/v1 npm run build` (Linux/macOS) or `$env:VITE_API_BASE_URL="..."; npm run build` (PowerShell). |
+
+- **Empty or unset** → frontend uses **`/api/v1`** (same origin; use when IIS or another reverse proxy forwards `/api` to the backend).
+- **Set to full URL** → e.g. `https://api.yourserver.com/api/v1` when the API is on a different host/port.
+
+The value is read in `src/shared/api/axiosClient.ts` (and `authApi.ts`). Changes require a **new build**; they are baked in at build time.
+
+---
+
+## React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
