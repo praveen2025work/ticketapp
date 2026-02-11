@@ -2,14 +2,20 @@ import axios from 'axios';
 import axiosClient from './axiosClient';
 import type { AdUser, AuthResponse, BamAuthResponse, LoginRequest } from '../types';
 
-const baseURL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') || '/api/v1';
+const defaultBaseURL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') || '/api/v1';
 
 /** Call with credentials for Windows Auth (BAM/AD). No Bearer. */
 const axiosWithCredentials = axios.create({
-  baseURL,
+  baseURL: defaultBaseURL,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
+
+/** Set API base URL at runtime (e.g. from config.json). Call before any auth API requests. */
+export function setAuthApiBaseUrl(url: string): void {
+  const base = (url ?? '').replace(/\/$/, '') || defaultBaseURL;
+  axiosWithCredentials.defaults.baseURL = base;
+}
 
 export const authApi = {
   /** Legacy login (local only) */

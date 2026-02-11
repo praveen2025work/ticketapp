@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { AuthUser } from '../types';
-import { authApi } from '../api/authApi';
-import axiosClient, { getStoredToken, setStoredToken } from '../api/axiosClient';
+import { authApi, setAuthApiBaseUrl } from '../api/authApi';
+import axiosClient, { getStoredToken, setApiBaseUrl, setStoredToken } from '../api/axiosClient';
 import { isLocalEnv, useLocalAuth } from '../utils/env';
 
 const BAM_APP_NAME = 'FORT';
@@ -59,23 +59,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
+      // 0. Runtime config: load config.json first (apiBaseUrl + authMode)
+      let config: { apiBaseUrl?: string; authMode?: string } = {};
+      try {
+        const configRes = await fetch('/config.json', { cache: 'no-store' });
+        if (!cancelled && configRes.ok) {
+          config = await configRes.json();
+          if (config?.apiBaseUrl) {
+            setApiBaseUrl(config.apiBaseUrl);
+            setAuthApiBaseUrl(config.apiBaseUrl);
+          }
+        }
+      } catch {
+        // No config.json: use build-time VITE_API_BASE_URL or /api/v1
+      }
+
       // 1. Localhost / dev: use /users/me with X-Authenticated-User
       if (isLocalEnv()) {
         await fetchCurrentUser();
         return;
       }
-      // 2. Runtime config (no rebuild): fetch config.json; if authMode === 'local', skip BAM
-      try {
-        const configRes = await fetch('/config.json', { cache: 'no-store' });
-        if (!cancelled && configRes.ok) {
-          const config = await configRes.json();
-          if (config?.authMode === 'local') {
-            await fetchCurrentUser();
-            return;
-          }
-        }
-      } catch {
-        // No config.json or parse error: continue to build-time check or BAM
+      // 2. Runtime config: if authMode === 'local', skip BAM
+      if (config?.authMode === 'local') {
+        await fetchCurrentUser();
+        return;
       }
       // 3. Build-time flag VITE_AUTH_MODE=local (must be set when running npm run build)
       if (useLocalAuth()) {

@@ -14,13 +14,19 @@ export function setStoredToken(token: string | null): void {
   }
 }
 
-const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') || '/api/v1';
+const defaultApiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') || '/api/v1';
 const axiosClient = axios.create({
-  baseURL: apiBase,
+  baseURL: defaultApiBase,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+/** Set API base URL at runtime (e.g. from config.json). Call before any API requests. */
+export function setApiBaseUrl(url: string): void {
+  const base = (url ?? '').replace(/\/$/, '') || defaultApiBase;
+  axiosClient.defaults.baseURL = base;
+}
 
 axiosClient.interceptors.request.use((config) => {
   const token = getStoredToken();

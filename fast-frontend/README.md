@@ -4,18 +4,37 @@ React + TypeScript + Vite frontend for the FAST Problem Ticket System.
 
 ## Backend API URL
 
-The frontend talks to the backend via **`VITE_API_BASE_URL`**. Update it in one of these ways:
+You can set the API base URL in two ways:
+
+### 1. Runtime (no rebuild): `config.json`
+
+**Recommended for deployment.** The app loads **`/config.json`** on startup. Put it in the same folder as `index.html` (e.g. in `public/` so it’s copied to `dist/` on build). Example:
+
+```json
+{
+  "apiBaseUrl": "http://your-server:8081/api/v1",
+  "authMode": "local"
+}
+```
+
+- **`apiBaseUrl`** – full backend API base (no trailing slash). All API calls use this. Change it on the server and refresh the app; no rebuild needed.
+- **`authMode`** – `"local"` to skip BAM and use `/users/me` with the default user.
+
+If `apiBaseUrl` is omitted, the app uses the build-time value or `/api/v1`.
+
+### 2. Build time: `VITE_API_BASE_URL`
+
+Set when building so the default is baked in:
 
 | Where | When to use |
 |-------|-------------|
-| **`.env`** in `fast-frontend/` | Copy from `.env.example`, set `VITE_API_BASE_URL=...`, then run `npm run build`. |
-| **`.env.production`** | Same as `.env` but only applied for production builds. |
-| **Shell when building** | `VITE_API_BASE_URL=https://api.server.com/api/v1 npm run build` (Linux/macOS) or `$env:VITE_API_BASE_URL="..."; npm run build` (PowerShell). |
+| **`.env`** in `fast-frontend/` | `VITE_API_BASE_URL=http://your-server:8081/api/v1` then `npm run build`. |
+| **Shell** | `$env:VITE_API_BASE_URL="http://..."; npm run build` (PowerShell) or `VITE_API_BASE_URL=... npm run build` (Bash). |
 
-- **Empty or unset** → frontend uses **`/api/v1`** (same origin; use when IIS or another reverse proxy forwards `/api` to the backend).
-- **Set to full URL** → e.g. `https://api.yourserver.com/api/v1` when the API is on a different host/port.
+- **Empty or unset** → default is **`/api/v1`** (same origin).
+- **Set** → e.g. `http://your-server:8081/api/v1` or `https://api.yourserver.com/api/v1`.
 
-The value is read in `src/shared/api/axiosClient.ts` (and `authApi.ts`). Changes require a **new build**; they are baked in at build time.
+If you also use **`config.json`** with `apiBaseUrl`, that runtime value overrides the build-time one after the first load.
 
 ---
 
