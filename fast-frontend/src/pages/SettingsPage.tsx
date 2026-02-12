@@ -4,7 +4,7 @@ import { useAuth } from '../shared/context/AuthContext';
 import { settingsApi } from '../shared/api/settingsApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) {
+export default function SettingsPage({ embedded, readOnly }: { embedded?: boolean; readOnly?: boolean } = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [local, setLocal] = useState<Record<string, string>>({});
@@ -12,7 +12,7 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
   const { data, isLoading, error } = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsApi.get(),
-    enabled: user?.role === 'ADMIN',
+    enabled: Boolean(user),
   });
 
   useEffect(() => {
@@ -35,14 +35,6 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
     updateMutation.mutate(local);
   };
 
-  if (!embedded && user?.role !== 'ADMIN') {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <p className="text-slate-600">You need Admin role to access Settings.</p>
-      </div>
-    );
-  }
-
   if (isLoading) return <LoadingSpinner message="Loading settings..." />;
   if (error) return <div className="text-center py-8 text-red-500">Failed to load settings</div>;
 
@@ -61,7 +53,8 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
               type="text"
               value={local['smtpHost'] ?? ''}
               onChange={(e) => handleChange('smtpHost', e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+              readOnly={readOnly}
+              className={`w-full border border-gray-300 rounded-md p-2 text-sm ${readOnly ? 'bg-gray-50 dark:bg-slate-700 cursor-not-allowed' : ''}`}
               placeholder="smtp.example.com"
             />
           </div>
@@ -71,7 +64,8 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
               type="text"
               value={local['smtpPort'] ?? ''}
               onChange={(e) => handleChange('smtpPort', e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+              readOnly={readOnly}
+              className={`w-full border border-gray-300 rounded-md p-2 text-sm ${readOnly ? 'bg-gray-50 dark:bg-slate-700 cursor-not-allowed' : ''}`}
               placeholder="587"
             />
           </div>
@@ -81,7 +75,8 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
               type="text"
               value={local['smtpUsername'] ?? ''}
               onChange={(e) => handleChange('smtpUsername', e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+              readOnly={readOnly}
+              className={`w-full border border-gray-300 rounded-md p-2 text-sm ${readOnly ? 'bg-gray-50 dark:bg-slate-700 cursor-not-allowed' : ''}`}
             />
           </div>
           <div>
@@ -90,10 +85,11 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
               type="password"
               value={local['smtpPassword'] ?? ''}
               onChange={(e) => handleChange('smtpPassword', e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+              readOnly={readOnly}
+              className={`w-full border border-gray-300 rounded-md p-2 text-sm ${readOnly ? 'bg-gray-50 dark:bg-slate-700 cursor-not-allowed' : ''}`}
               placeholder="Leave blank to keep current"
             />
-            <p className="text-xs text-gray-500 mt-0.5">Shown as masked when loaded. Enter new value to change.</p>
+            {!readOnly && <p className="text-xs text-gray-500 mt-0.5">Shown as masked when loaded. Enter new value to change.</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">From address</label>
@@ -101,7 +97,8 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
               type="email"
               value={local['smtpFrom'] ?? ''}
               onChange={(e) => handleChange('smtpFrom', e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2 text-sm"
+              readOnly={readOnly}
+              className={`w-full border border-gray-300 rounded-md p-2 text-sm ${readOnly ? 'bg-gray-50 dark:bg-slate-700 cursor-not-allowed' : ''}`}
               placeholder="noreply@example.com"
             />
           </div>
@@ -118,7 +115,8 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
               type="checkbox"
               checked={(local['dailyReportEnabled'] ?? '') === 'true'}
               onChange={(e) => handleChange('dailyReportEnabled', e.target.checked ? 'true' : 'false')}
-              className="rounded border-gray-300 text-primary focus:ring-primary"
+              disabled={readOnly}
+              className="rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-60"
             />
             <span className="text-sm font-medium text-gray-700">Enable daily reports globally</span>
           </label>
@@ -137,7 +135,8 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
                     type="checkbox"
                     checked={(local[keyEnabled] ?? '') === 'true'}
                     onChange={(e) => handleChange(keyEnabled, e.target.checked ? 'true' : 'false')}
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                    disabled={readOnly}
+                    className="rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-60"
                   />
                   <span className="text-sm font-medium text-gray-700">{zone}</span>
                 </label>
@@ -148,7 +147,8 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
                       type="text"
                       value={local[keyTime] ?? ''}
                       onChange={(e) => handleChange(keyTime, e.target.value)}
-                      className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                      readOnly={readOnly}
+                      className={`w-full border border-gray-300 rounded-md p-2 text-sm ${readOnly ? 'bg-gray-50 dark:bg-slate-700 cursor-not-allowed' : ''}`}
                       placeholder="08:00"
                     />
                   </div>
@@ -158,7 +158,8 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
                       type="text"
                       value={local[keyRecipients] ?? ''}
                       onChange={(e) => handleChange(keyRecipients, e.target.value)}
-                      className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                      readOnly={readOnly}
+                      className={`w-full border border-gray-300 rounded-md p-2 text-sm ${readOnly ? 'bg-gray-50 dark:bg-slate-700 cursor-not-allowed' : ''}`}
                       placeholder="email1@example.com, email2@example.com"
                     />
                   </div>
@@ -177,22 +178,25 @@ export default function SettingsPage({ embedded }: { embedded?: boolean } = {}) 
             type="checkbox"
             checked={(local['ticketEmailEnabled'] ?? 'true') === 'true'}
             onChange={(e) => handleChange('ticketEmailEnabled', e.target.checked ? 'true' : 'false')}
-            className="rounded border-gray-300 text-primary focus:ring-primary"
+            disabled={readOnly}
+            className="rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-60"
           />
           <span className="text-sm font-medium text-gray-700">Allow sending email to assignee from ticket</span>
         </label>
       </section>
 
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 text-sm font-medium"
-        >
-          {updateMutation.isPending ? 'Saving...' : 'Save settings'}
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 text-sm font-medium"
+          >
+            {updateMutation.isPending ? 'Saving...' : 'Save settings'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

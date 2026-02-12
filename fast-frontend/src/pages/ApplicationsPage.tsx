@@ -5,7 +5,7 @@ import { applicationsApi, type ApplicationResponse, type ApplicationRequest } fr
 import { getApiErrorMessage } from '../shared/utils/apiError';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-export default function ApplicationsPage({ embedded }: { embedded?: boolean } = {}) {
+export default function ApplicationsPage({ embedded, readOnly }: { embedded?: boolean; readOnly?: boolean } = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -15,7 +15,7 @@ export default function ApplicationsPage({ embedded }: { embedded?: boolean } = 
   const { data: applications = [], isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['applications'],
     queryFn: () => applicationsApi.list(),
-    enabled: user?.role === 'ADMIN',
+    enabled: Boolean(user),
     retry: 2,
   });
 
@@ -62,14 +62,6 @@ export default function ApplicationsPage({ embedded }: { embedded?: boolean } = 
     }
   };
 
-  if (!embedded && user?.role !== 'ADMIN') {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <p className="text-slate-600">You need Admin role to manage applications.</p>
-      </div>
-    );
-  }
-
   if (isLoading && !isRefetching) return <LoadingSpinner message="Loading applications..." />;
   if (error) {
     return (
@@ -86,18 +78,20 @@ export default function ApplicationsPage({ embedded }: { embedded?: boolean } = 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        {!embedded && <h1 className="text-2xl font-bold text-gray-900">Applications</h1>}
+        {!embedded && <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Applications</h1>}
         {embedded && <div />}
-        <button
-          type="button"
-          onClick={() => { setShowForm(true); setEditing(null); setForm({ name: '', code: '', description: '' }); }}
-          className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover ml-auto"
-        >
-          Add application
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => { setShowForm(true); setEditing(null); setForm({ name: '', code: '', description: '' }); }}
+            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover ml-auto"
+          >
+            Add application
+          </button>
+        )}
       </div>
 
-      {(showForm || editing) && (
+      {!readOnly && (showForm || editing) && (
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             {editing ? 'Edit application' : 'Add application'}
@@ -159,12 +153,12 @@ export default function ApplicationsPage({ embedded }: { embedded?: boolean } = 
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-slate-700/50">
             <tr>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              {!readOnly && <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -173,23 +167,25 @@ export default function ApplicationsPage({ embedded }: { embedded?: boolean } = 
                 <td className="px-4 py-2 text-sm font-medium text-gray-900">{app.name}</td>
                 <td className="px-4 py-2 text-sm text-gray-600">{app.code ?? '—'}</td>
                 <td className="px-4 py-2 text-sm text-gray-600 max-w-xs truncate">{app.description ?? '—'}</td>
-                <td className="px-4 py-2 text-right text-sm">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(app)}
-                    className="text-primary hover:underline mr-3"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => window.confirm('Delete this application?') && deleteMutation.mutate(app.id)}
-                    disabled={deleteMutation.isPending}
-                    className="text-rose-600 hover:underline disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-                </td>
+                {!readOnly && (
+                  <td className="px-4 py-2 text-right text-sm">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(app)}
+                      className="text-primary hover:underline mr-3"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.confirm('Delete this application?') && deleteMutation.mutate(app.id)}
+                      disabled={deleteMutation.isPending}
+                      className="text-rose-600 hover:underline disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

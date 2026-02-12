@@ -8,9 +8,6 @@ import { useAutoRefresh } from '../shared/context/AutoRefreshContext';
 import { approvalApi } from '../shared/api/approvalApi';
 import DevUserSwitcher from './DevUserSwitcher';
 
-const ROLES_CAN_CREATE = ['ADMIN'];
-const ROLES_CAN_APPROVE = ['ADMIN', 'REVIEWER', 'APPROVER', 'RTB_OWNER'];
-
 const CreateIcon = () => (
   <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -20,10 +17,10 @@ const CreateIcon = () => (
 const navItems = [
   { path: '/dashboard', label: 'Dashboard' },
   { path: '/tickets', label: 'Tickets' },
-  { path: '/tickets/create', label: 'Ticket', icon: 'create', roles: ROLES_CAN_CREATE },
-  { path: '/approvals', label: 'Approvals', roles: ROLES_CAN_APPROVE },
+  { path: '/tickets/create', label: 'Ticket', icon: 'create' },
+  { path: '/approvals', label: 'Approvals' },
   { path: '/knowledge', label: 'KB' },
-  { path: '/admin', label: 'Admin', adminOnly: true },
+  { path: '/admin', label: 'Admin' },
 ];
 
 const RefreshIcon = () => (
@@ -39,19 +36,15 @@ export default function Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const canSeeApprovals = Boolean(user?.role && ROLES_CAN_APPROVE.includes(user.role));
   const { data: pendingApprovals = [] } = useQuery<ApprovalRecord[], Error>({
     queryKey: ['approvals', 'pending'],
     queryFn: () => approvalApi.getPending(),
-    enabled: canSeeApprovals,
+    enabled: Boolean(user),
   });
   const approvalCount = pendingApprovals.length;
 
-  const filteredNavItems = navItems.filter((item) => {
-    if ('adminOnly' in item && item.adminOnly) return user?.role === 'ADMIN';
-    if ('roles' in item && Array.isArray(item.roles)) return user?.role && item.roles.includes(user.role);
-    return true;
-  });
+  // Show all nav items to every role; actions/buttons on each page are enabled by role (read-only when not permitted).
+  const filteredNavItems = navItems;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors">

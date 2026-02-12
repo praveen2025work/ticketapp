@@ -9,7 +9,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 const ROLES = ['ADMIN', 'REVIEWER', 'APPROVER', 'RTB_OWNER', 'TECH_LEAD', 'READ_ONLY'];
 const REGIONS = ['APAC', 'EMEA', 'AMER'];
 
-export default function UsersPage({ embedded }: { embedded?: boolean } = {}) {
+export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; readOnly?: boolean } = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
@@ -26,14 +26,14 @@ export default function UsersPage({ embedded }: { embedded?: boolean } = {}) {
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['users', page],
     queryFn: () => usersApi.list(page, 20),
-    enabled: user?.role === 'ADMIN',
+    enabled: Boolean(user),
     retry: 2,
   });
 
   const { data: allApplications = [] } = useQuery({
     queryKey: ['applications'],
     queryFn: () => applicationsApi.list(),
-    enabled: user?.role === 'ADMIN' && !!assignUser,
+    enabled: Boolean(user) && !!assignUser && !readOnly,
   });
 
   const registerMutation = useMutation({
@@ -54,14 +54,6 @@ export default function UsersPage({ embedded }: { embedded?: boolean } = {}) {
     },
   });
 
-  if (!embedded && user?.role !== 'ADMIN') {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <p className="text-slate-600">You need Admin role to manage users.</p>
-      </div>
-    );
-  }
-
   if (isLoading && !isRefetching) return <LoadingSpinner message="Loading users..." />;
   if (error) {
     return (
@@ -81,18 +73,20 @@ export default function UsersPage({ embedded }: { embedded?: boolean } = {}) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        {!embedded && <h1 className="text-2xl font-bold text-gray-900">Users</h1>}
+        {!embedded && <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Users</h1>}
         {embedded && <div />}
-        <button
-          type="button"
-          onClick={() => setShowAdd(true)}
-          className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover"
-        >
-          Add user
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover"
+          >
+            Add user
+          </button>
+        )}
       </div>
 
-      {showAdd && (
+      {!readOnly && showAdd && (
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Add user</h2>
           <form
@@ -179,7 +173,7 @@ export default function UsersPage({ embedded }: { embedded?: boolean } = {}) {
         </div>
       )}
 
-      {assignUser && (
+      {!readOnly && assignUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Assign applications: {assignUser.fullName}</h2>
@@ -227,7 +221,7 @@ export default function UsersPage({ embedded }: { embedded?: boolean } = {}) {
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Applications</th>
+              {!readOnly && <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Applications</th>}
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
             </tr>
           </thead>
@@ -239,15 +233,17 @@ export default function UsersPage({ embedded }: { embedded?: boolean } = {}) {
                 <td className="px-4 py-2 text-sm text-gray-700">{u.email}</td>
                 <td className="px-4 py-2 text-sm"><span className="px-2 py-0.5 bg-slate-100 rounded text-xs">{u.role}</span></td>
                 <td className="px-4 py-2 text-sm text-gray-600">{u.region ?? '—'}</td>
-                <td className="px-4 py-2 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setAssignUser(u)}
-                    className="text-primary hover:underline text-xs"
-                  >
-                    {(u.applications?.length ?? 0) > 0 ? `${u.applications!.length} app(s)` : 'Assign'}
-                  </button>
-                </td>
+                {!readOnly && (
+                  <td className="px-4 py-2 text-sm">
+                    <button
+                      type="button"
+                      onClick={() => setAssignUser(u)}
+                      className="text-primary hover:underline text-xs"
+                    >
+                      {(u.applications?.length ?? 0) > 0 ? `${u.applications!.length} app(s)` : 'Assign'}
+                    </button>
+                  </td>
+                )}
                 <td className="px-4 py-2 text-sm">{u.active ? 'Yes' : 'No'}</td>
               </tr>
             ))}

@@ -24,19 +24,20 @@ export default function AdminPage() {
     setSearchParams({ tab });
   };
 
-  if (user?.role !== 'ADMIN') {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <p className="text-slate-600">You need Admin role to access this page.</p>
-      </div>
-    );
-  }
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Admin</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Admin</h1>
+        {!isAdmin && (
+          <span className="text-sm text-slate-500 dark:text-slate-400 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700">
+            View only — you need Admin role to make changes
+          </span>
+        )}
+      </div>
 
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 dark:border-slate-600">
         <nav className="flex gap-1" aria-label="Tabs">
           {TABS.map((tab) => (
             <button
@@ -57,9 +58,9 @@ export default function AdminPage() {
       </div>
 
       <div className="min-h-[400px] pt-2">
-        {activeTab === 'settings' && <SettingsPage embedded />}
-        {activeTab === 'applications' && <ApplicationsPage embedded />}
-        {activeTab === 'users' && <UsersPage embedded />}
+        {activeTab === 'settings' && <SettingsPage embedded readOnly={!isAdmin} />}
+        {activeTab === 'applications' && <ApplicationsPage embedded readOnly={!isAdmin} />}
+        {activeTab === 'users' && <UsersPage embedded readOnly={!isAdmin} />}
         {activeTab === 'audit' && <AuditLogPage embedded />}
       </div>
     </div>

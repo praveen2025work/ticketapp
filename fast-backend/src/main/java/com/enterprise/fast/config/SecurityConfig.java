@@ -66,14 +66,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/approvals/*/approve", "/api/v1/approvals/*/reject")
                         .hasAnyRole("REVIEWER", "APPROVER", "RTB_OWNER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/approvals/pending")
-                        .hasAnyRole("REVIEWER", "APPROVER", "RTB_OWNER", "ADMIN")
+                        .authenticated()
 
                         // Admin endpoints
                         .requestMatchers("/api/v1/auth/register").hasRole("ADMIN")
                         .requestMatchers("/api/v1/audit/recent").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/settings").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/settings").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/tech-leads").hasAnyRole("ADMIN", "RTB_OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/applications").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/applications", "/api/v1/applications/*").authenticated()

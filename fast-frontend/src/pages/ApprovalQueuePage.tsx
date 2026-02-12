@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { approvalApi } from '../shared/api/approvalApi';
@@ -33,7 +33,7 @@ export default function ApprovalQueuePage() {
   const { data: assignedTicketsData, isLoading: assignedLoading } = useQuery({
     queryKey: ['problems', 'status', 'ASSIGNED'],
     queryFn: () => problemApi.getByStatus('ASSIGNED', 0, 50),
-    enabled: isAdmin,
+    enabled: true,
   });
   const assignedTickets = assignedTicketsData?.content ?? [];
 
@@ -61,9 +61,7 @@ export default function ApprovalQueuePage() {
     (approveMutation.isPending && approveMutation.variables?.approvalId === approvalId) ||
     (rejectMutation.isPending && rejectMutation.variables?.approvalId === approvalId);
 
-  if (user && !ROLES_CAN_APPROVE.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  const canApprove = Boolean(user?.role && ROLES_CAN_APPROVE.includes(user.role));
 
   if (isLoading) {
     return <LoadingSpinner message="Loading approvals..." />;
@@ -78,11 +76,13 @@ export default function ApprovalQueuePage() {
             Approval queue
           </h1>
           <p className="mt-1 text-slate-600 dark:text-slate-300">
-            {approvals.length === 0
-              ? 'No tickets waiting for your decision.'
-              : approvals.length === 1
-                ? '1 ticket is waiting for your decision.'
-                : `${approvals.length} tickets are waiting for your decision.`}
+            {!canApprove && approvals.length > 0
+              ? `${approvals.length} ticket(s) pending approval. View only — only Reviewers/Approvers/RTB Owner can approve.`
+              : approvals.length === 0
+                ? 'No tickets waiting for approval.'
+                : approvals.length === 1
+                  ? '1 ticket is waiting for your decision.'
+                  : `${approvals.length} tickets are waiting for your decision.`}
           </p>
         </div>
         {approvals.length > 0 && (
@@ -183,12 +183,12 @@ export default function ApprovalQueuePage() {
             >
               <ApprovalCard
                 approval={approval}
-                isReviewer
-                onApprove={(id, comment) => approveMutation.mutate({ approvalId: id, comment })}
-                onReject={(id, comment) => rejectMutation.mutate({ approvalId: id, comment })}
+                isReviewer={canApprove}
+                onApprove={canApprove ? (id, comment) => approveMutation.mutate({ approvalId: id, comment }) : undefined}
+                onReject={canApprove ? (id, comment) => rejectMutation.mutate({ approvalId: id, comment }) : undefined}
                 onViewTicket={(ticketId) => setViewingTicketId(ticketId)}
                 comments={comments[approval.id] ?? ''}
-                onCommentsChange={(value) => setComments((prev) => ({ ...prev, [approval.id]: value }))}
+                onCommentsChange={canApprove ? (value) => setComments((prev) => ({ ...prev, [approval.id]: value })) : undefined}
                 actionLoading={getActionLoading(approval.id)}
               />
             </div>
@@ -196,36 +196,36 @@ export default function ApprovalQueuePage() {
         </div>
       )}
 
-      {/* For ADMIN: tickets with approvals complete (ASSIGNED) — action items */}
-      {isAdmin && (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
-            Action items — approvals complete
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-            Tickets that have passed all approvals. Assign BTB Tech Lead and move to In Progress from the ticket.
-          </p>
-          {assignedLoading ? (
-            <p className="text-sm text-slate-500">Loading...</p>
-          ) : assignedTickets.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No tickets in ASSIGNED status.</p>
-          ) : (
-            <ul className="space-y-2">
-              {assignedTickets.map((t) => (
-                <li
-                  key={t.id}
-                  className="flex flex-wrap items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"
-                >
-                  <span className="font-mono text-sm text-slate-500 dark:text-slate-400">#{t.id}</span>
-                  <span className="flex-1 min-w-0 truncate text-slate-900 dark:text-slate-100">{t.title}</span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/tickets/${t.id}`)}
-                      className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                    >
-                      Open ticket
-                    </button>
+      {/* Tickets with approvals complete (ASSIGNED) — list visible to all; Move to In Progress only for ADMIN */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
+          Action items — approvals complete
+        </h2>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Tickets that have passed all approvals. {isAdmin ? 'Assign BTB Tech Lead and move to In Progress from the ticket.' : 'View only — only Admin can move status.'}
+        </p>
+        {assignedLoading ? (
+          <p className="text-sm text-slate-500">Loading...</p>
+        ) : assignedTickets.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">No tickets in ASSIGNED status.</p>
+        ) : (
+          <ul className="space-y-2">
+            {assignedTickets.map((t) => (
+              <li
+                key={t.id}
+                className="flex flex-wrap items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"
+              >
+                <span className="font-mono text-sm text-slate-500 dark:text-slate-400">#{t.id}</span>
+                <span className="flex-1 min-w-0 truncate text-slate-900 dark:text-slate-100">{t.title}</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/tickets/${t.id}`)}
+                    className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  >
+                    Open ticket
+                  </button>
+                  {isAdmin && (
                     <button
                       type="button"
                       onClick={() => statusMutation.mutate({ id: t.id, status: 'IN_PROGRESS' })}
@@ -234,13 +234,13 @@ export default function ApprovalQueuePage() {
                     >
                       {statusMutation.isPending && statusMutation.variables?.id === t.id ? 'Updating...' : 'Move to In Progress'}
                     </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

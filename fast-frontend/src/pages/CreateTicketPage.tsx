@@ -1,4 +1,4 @@
-import { useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { problemApi } from '../shared/api/problemApi';
 import type { CreateFastProblemRequest, FastProblem } from '../shared/types';
@@ -44,7 +44,13 @@ export default function CreateTicketPage() {
   });
 
   if (user && user.role !== 'ADMIN') {
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <div className="max-w-2xl mx-auto">
+        <p className="text-slate-600 dark:text-slate-400 mb-2">Only Admin can create or clone tickets.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-500 mb-4">You can view and browse all tickets from the Tickets page.</p>
+        <Link to="/tickets" className="text-primary hover:underline font-medium">View tickets</Link>
+      </div>
+    );
   }
 
   return (
