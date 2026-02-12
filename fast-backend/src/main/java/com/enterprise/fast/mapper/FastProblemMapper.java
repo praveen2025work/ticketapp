@@ -156,6 +156,7 @@ public class FastProblemMapper {
         return ApprovalResponse.builder()
                 .id(record.getId())
                 .fastProblemId(record.getFastProblem().getId())
+                .fastProblemTitle(record.getFastProblem().getTitle())
                 .approvalRole(record.getApprovalRole() != null ? record.getApprovalRole().name() : null)
                 .reviewerName(record.getReviewerName())
                 .reviewerEmail(record.getReviewerEmail())

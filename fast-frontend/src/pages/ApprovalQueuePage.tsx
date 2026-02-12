@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { approvalApi } from '../shared/api/approvalApi';
 import { problemApi } from '../shared/api/problemApi';
 import type { ApprovalRecord } from '../shared/types';
@@ -15,11 +16,18 @@ export default function ApprovalQueuePage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [comments, setComments] = useState<Record<number, string>>({});
+  const [viewingTicketId, setViewingTicketId] = useState<number | null>(null);
   const isAdmin = user?.role === 'ADMIN';
 
   const { data: approvals = [], isLoading } = useQuery<ApprovalRecord[]>({
     queryKey: ['approvals', 'pending'],
     queryFn: () => approvalApi.getPending(),
+  });
+
+  const { data: viewingTicket, isLoading: viewingTicketLoading } = useQuery({
+    queryKey: ['problems', viewingTicketId],
+    queryFn: () => problemApi.getById(viewingTicketId!),
+    enabled: viewingTicketId != null,
   });
 
   const { data: assignedTicketsData, isLoading: assignedLoading } = useQuery({
@@ -90,6 +98,55 @@ export default function ApprovalQueuePage() {
         )}
       </div>
 
+      {/* Same-page ticket detail panel (when View is clicked) */}
+      {viewingTicketId != null && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700/50">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ticket details</h2>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(`/tickets/${viewingTicketId}`)}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Open full ticket
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingTicketId(null)}
+                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4">
+            {viewingTicketLoading ? (
+              <p className="text-sm text-slate-500">Loading...</p>
+            ) : viewingTicket ? (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="font-medium text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Title</p>
+                  <p className="mt-0.5 text-slate-900 dark:text-slate-100 font-medium">{viewingTicket.title}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Description</p>
+                  <p className="mt-0.5 text-slate-700 dark:text-slate-300 whitespace-pre-wrap line-clamp-4">{viewingTicket.description || '—'}</p>
+                </div>
+                <div className="flex flex-wrap gap-4 pt-1">
+                  <span><span className="text-slate-500 dark:text-slate-400">Status</span> <span className="font-medium text-slate-800 dark:text-slate-200">{viewingTicket.status?.replace(/_/g, ' ')}</span></span>
+                  {viewingTicket.assignedTo && <span><span className="text-slate-500 dark:text-slate-400">Assigned to</span> <span className="font-medium text-slate-800 dark:text-slate-200">{viewingTicket.assignedTo}</span></span>}
+                  <span><span className="text-slate-500 dark:text-slate-400">Created</span> <span className="font-medium text-slate-800 dark:text-slate-200">{new Date(viewingTicket.createdDate).toLocaleDateString()}</span></span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-rose-600">Could not load ticket.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       {approvals.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-12 text-center shadow-sm">
@@ -129,7 +186,7 @@ export default function ApprovalQueuePage() {
                 isReviewer
                 onApprove={(id, comment) => approveMutation.mutate({ approvalId: id, comment })}
                 onReject={(id, comment) => rejectMutation.mutate({ approvalId: id, comment })}
-                onNavigateToTicket={(ticketId) => navigate(`/tickets/${ticketId}`)}
+                onViewTicket={(ticketId) => setViewingTicketId(ticketId)}
                 comments={comments[approval.id] ?? ''}
                 onCommentsChange={(value) => setComments((prev) => ({ ...prev, [approval.id]: value }))}
                 actionLoading={getActionLoading(approval.id)}

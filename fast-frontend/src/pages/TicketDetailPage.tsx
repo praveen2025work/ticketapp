@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  DocumentCheckIcon,
+  XCircleIcon,
+  NoSymbolIcon,
+  PencilSquareIcon,
+  EnvelopeIcon,
+  DocumentDuplicateIcon,
+  ArrowRightIcon,
+} from '@heroicons/react/24/outline';
 import { problemApi } from '../shared/api/problemApi';
 import { approvalApi } from '../shared/api/approvalApi';
 import { usersApi } from '../shared/api/usersApi';
@@ -9,6 +18,10 @@ import { useAuth } from '../shared/context/AuthContext';
 import ClassificationBadge from '../components/ClassificationBadge';
 import StatusTimeline from '../components/StatusTimeline';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+const btnIcon = 'inline-block w-5 h-5 shrink-0';
+const btnBase = 'inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50';
+const btnIconOnly = 'inline-flex items-center justify-center p-2 rounded-xl text-sm transition-colors disabled:opacity-50';
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -114,7 +127,7 @@ export default function TicketDetailPage() {
   const isAging = !['RESOLVED', 'CLOSED'].includes(ticket.status) && (ticket.ticketAgeDays ?? 0) >= 20;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-8">
       {isAging && (
         <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-500/50 rounded-2xl p-4 animate-subtle-glow flex items-center gap-3">
           <span className="inline-block w-3 h-3 rounded-full bg-rose-500 animate-pulse" aria-hidden />
@@ -124,63 +137,79 @@ export default function TicketDetailPage() {
           </div>
         </div>
       )}
-      <div className="flex justify-between items-start">
-        <div>
-          <button onClick={() => navigate('/tickets')} className="text-sm text-primary hover:underline mb-2 block">
-            &larr; Back to Tickets
-          </button>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">#{ticket.id} - {ticket.title}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          {ticket.status === 'NEW' && (!ticket.approvalRecords || ticket.approvalRecords.length === 0) && user?.role === 'ADMIN' && (
-            <button onClick={() => submitMutation.mutate()} disabled={actionLoading}
-              className="bg-primary text-white px-4 py-2 rounded-xl text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors">
-              Submit for Approval
+
+      {/* Ticket header: left = name (wraps), right = actions. Scrolls with page so top nav stays visible. */}
+      <header className="grid grid-cols-[1fr_auto] gap-6 items-start max-w-full py-1">
+          {/* Left: ticket name — can wrap to multiple rows without moving the actions */}
+          <section className="min-w-0">
+            <button onClick={() => navigate('/tickets')} className="text-sm text-primary hover:underline mb-1 block">
+              &larr; Back to Tickets
             </button>
-          )}
-          {ticket.status === 'NEW' && ticket.approvalRecords && ticket.approvalRecords.length > 0 && user?.role === 'ADMIN' && (
-            <span className="text-sm text-slate-500 italic">Submitted for approval</span>
-          )}
-          {nextStatusMap[ticket.status] && (user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
-            <button onClick={() => statusMutation.mutate(nextStatusMap[ticket.status])} disabled={actionLoading}
-              className="bg-primary text-white px-4 py-2 rounded-xl text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors">
-              Move to {nextStatusMap[ticket.status].replace(/_/g, ' ')}
-            </button>
-          )}
-          {(user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
-            <button onClick={() => navigate(`/tickets/${id}/edit`)}
-              className="bg-slate-600 text-white px-4 py-2 rounded-xl text-sm hover:bg-slate-700 disabled:opacity-50 transition-colors">
-              Edit
-            </button>
-          )}
-          {ticket.assignedTo && (user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
-            <button
-              onClick={() => setShowEmailModal(true)}
-              className="bg-primary text-white px-4 py-2 rounded-xl text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
-            >
-              Send email to assignee
-            </button>
-          )}
-          {user?.role === 'ADMIN' && (ticket.status === 'NEW' || ticket.status === 'ASSIGNED') && (
-            <>
-              <button onClick={() => statusMutation.mutate('CLOSED')} disabled={actionLoading}
-                className="bg-slate-500 text-white px-4 py-2 rounded-xl text-sm hover:bg-slate-600 disabled:opacity-50 transition-colors">
-                Close ticket
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 break-words">
+              #{ticket.id} - {ticket.title}
+            </h1>
+          </section>
+          {/* Right: actions — fixed column, always in the same spot regardless of title length */}
+          <section className="flex flex-wrap gap-2 justify-end items-center min-h-[2.75rem] w-max flex-shrink-0">
+            {ticket.status === 'NEW' && (!ticket.approvalRecords || ticket.approvalRecords.length === 0) && user?.role === 'ADMIN' && (
+              <button onClick={() => submitMutation.mutate()} disabled={actionLoading}
+                className={`${btnBase} bg-primary text-white hover:bg-primary-hover`}
+                title="Submit for approval">
+                <DocumentCheckIcon className={btnIcon} aria-hidden />
+                Approval
               </button>
-              <button onClick={() => statusMutation.mutate('REJECTED')} disabled={actionLoading}
-                className="bg-rose-600 text-white px-4 py-2 rounded-xl text-sm hover:bg-rose-700 disabled:opacity-50 transition-colors">
-                Reject ticket
+            )}
+            {ticket.status === 'NEW' && ticket.approvalRecords && ticket.approvalRecords.length > 0 && user?.role === 'ADMIN' && (
+              <span className="text-sm text-slate-500 italic">Submitted for approval</span>
+            )}
+            {nextStatusMap[ticket.status] && (user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
+              <button onClick={() => statusMutation.mutate(nextStatusMap[ticket.status])} disabled={actionLoading}
+                className={`${btnBase} bg-primary text-white hover:bg-primary-hover`}
+                title={`Move to ${nextStatusMap[ticket.status].replace(/_/g, ' ')}`}>
+                <ArrowRightIcon className={btnIcon} aria-hidden />
+                Move to {nextStatusMap[ticket.status].replace(/_/g, ' ')}
               </button>
-            </>
-          )}
-          {user?.role === 'ADMIN' && (
-            <button onClick={() => navigate('/tickets/create', { state: { cloneFrom: ticket } })}
-              className="bg-primary text-white px-4 py-2 rounded-xl text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors">
-              Clone ticket
-            </button>
-          )}
-        </div>
-      </div>
+            )}
+            {(user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
+              <button onClick={() => navigate(`/tickets/${id}/edit`)}
+                className={`${btnIconOnly} bg-slate-600 text-white hover:bg-slate-700`}
+                title="Edit">
+                <PencilSquareIcon className="w-5 h-5" aria-hidden />
+              </button>
+            )}
+            {ticket.assignedTo && (user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
+              <button
+                onClick={() => setShowEmailModal(true)}
+                className={`${btnIconOnly} bg-primary text-white hover:bg-primary-hover`}
+                title="Send email to assignee">
+                <EnvelopeIcon className="w-5 h-5" aria-hidden />
+              </button>
+            )}
+            {user?.role === 'ADMIN' && (ticket.status === 'NEW' || ticket.status === 'ASSIGNED') && (
+              <>
+                <button onClick={() => statusMutation.mutate('CLOSED')} disabled={actionLoading}
+                  className={`${btnBase} bg-slate-500 text-white hover:bg-slate-600`}
+                  title="Close ticket">
+                  <XCircleIcon className={btnIcon} aria-hidden />
+                  Close
+                </button>
+                <button onClick={() => statusMutation.mutate('REJECTED')} disabled={actionLoading}
+                  className={`${btnBase} bg-rose-600 text-white hover:bg-rose-700`}
+                  title="Reject ticket">
+                  <NoSymbolIcon className={btnIcon} aria-hidden />
+                  Reject
+                </button>
+              </>
+            )}
+            {user?.role === 'ADMIN' && (
+              <button onClick={() => navigate('/tickets/create', { state: { cloneFrom: ticket } })}
+                className={`${btnIconOnly} bg-primary text-white hover:bg-primary-hover`}
+                title="Clone ticket">
+                <DocumentDuplicateIcon className="w-5 h-5" aria-hidden />
+              </button>
+            )}
+          </section>
+      </header>
 
       {/* Status Timeline */}
       <div className="bg-white dark:bg-slate-800/80 rounded-lg shadow p-4 border border-slate-200 dark:border-slate-600">
@@ -414,7 +443,7 @@ export default function TicketDetailPage() {
         {/* Sidebar */}
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-800/80 rounded-lg shadow p-4 space-y-3 border border-slate-200 dark:border-slate-600">
-            <h3 className="font-semibold text-gray-800 dark:text-slate-100">Ticket Info</h3>
+            <h3 className="font-semibold text-gray-800 dark:text-slate-100">Info</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">INC Number</span><span className="font-mono text-slate-900 dark:text-slate-100">{ticket.servicenowIncidentNumber || '-'}</span></div>
               <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">PRB Number</span><span className="font-mono text-slate-900 dark:text-slate-100">{ticket.servicenowProblemNumber || '-'}</span></div>

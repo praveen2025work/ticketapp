@@ -15,6 +15,8 @@ public class ApprovalResponse {
 
     private Long id;
     private Long fastProblemId;
+    /** Ticket title for display in approval queue. */
+    private String fastProblemTitle;
     /** Which approval slot: REVIEWER, APPROVER, or RTB_OWNER. */
     private String approvalRole;
     private String reviewerName;

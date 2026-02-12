@@ -1,3 +1,4 @@
+import { CheckIcon, NoSymbolIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import type { ApprovalRecord } from '../shared/types';
 
 interface ApprovalCardProps {
@@ -5,7 +6,7 @@ interface ApprovalCardProps {
   onApprove?: (id: number, comments: string) => void;
   onReject?: (id: number, comments: string) => void;
   isReviewer?: boolean;
-  onNavigateToTicket?: (ticketId: number) => void;
+  onViewTicket?: (ticketId: number) => void;
   comments?: string;
   onCommentsChange?: (value: string) => void;
   actionLoading?: boolean;
@@ -16,7 +17,7 @@ export default function ApprovalCard({
   onApprove,
   onReject,
   isReviewer,
-  onNavigateToTicket,
+  onViewTicket,
   comments,
   onCommentsChange,
   actionLoading,
@@ -48,141 +49,113 @@ export default function ApprovalCard({
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
+  const statusStyles = {
+    PENDING: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
+    APPROVED: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+    REJECTED: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20',
+  };
+  const statusStyle = statusStyles[approval.decision as keyof typeof statusStyles] ?? statusStyles.PENDING;
+
   return (
     <article
       className={`
-        group relative overflow-hidden rounded-2xl border bg-white dark:bg-slate-800/80 text-left shadow-sm
-        transition-all duration-300 ease-out
-        hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600
-        border-slate-200 dark:border-slate-600
-        ${isPending ? 'border-amber-200/60 dark:border-amber-500/50 ring-1 ring-amber-100/50 dark:ring-amber-500/30' : ''}
+        relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800/95 text-left
+        shadow-sm ring-1 ring-slate-200/60 dark:ring-slate-600/50
+        transition-all duration-200 hover:shadow-md hover:ring-slate-300/60 dark:hover:ring-slate-500/50
+        ${isPending ? 'ring-amber-400/30 dark:ring-amber-500/20' : ''}
       `}
     >
-      {isPending && (
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-80" aria-hidden />
-      )}
+      {/* Top accent bar */}
+      <div
+        className={`h-1 ${isPending ? 'bg-amber-500' : approval.decision === 'APPROVED' ? 'bg-emerald-500' : 'bg-rose-500'}`}
+        aria-hidden
+      />
 
-      <div className="p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              {onNavigateToTicket ? (
-                <button
-                  type="button"
-                  onClick={() => onNavigateToTicket(approval.fastProblemId)}
-                  className="
-                    text-lg font-semibold text-slate-900 dark:text-slate-100 transition-colors hover:text-primary
-                    focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 rounded-lg
-                  "
-                >
-                  Ticket #{approval.fastProblemId}
-                </button>
-              ) : (
-                <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  Ticket #{approval.fastProblemId}
-                </span>
-              )}
-              <span
-                className={`
-                  inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
-                  ${isPending ? 'bg-amber-100 text-amber-800' : approval.decision === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}
-                `}
+      <div className="p-5">
+        {/* Header: ticket # + status pill */}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            {onViewTicket ? (
+              <button
+                type="button"
+                onClick={() => onViewTicket(approval.fastProblemId)}
+                className="font-mono text-sm font-semibold text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 rounded"
               >
-                {approval.decision}
+                #{approval.fastProblemId}
+              </button>
+            ) : (
+              <span className="font-mono text-sm font-semibold text-slate-500 dark:text-slate-400">#{approval.fastProblemId}</span>
+            )}
+            {approval.approvalRole && (
+              <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                {approval.approvalRole.replace(/_/g, ' ')}
               </span>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
-              {approval.approvalRole && (
-                <span className="font-medium text-slate-700 dark:text-slate-200">
-                  {approval.approvalRole.replace(/_/g, ' ')} approval
-                </span>
-              )}
-              {approval.reviewerName && (
-                <>
-                  <span className="text-slate-500 dark:text-slate-400">Decided by</span>
-                  <span className="font-medium text-slate-700 dark:text-slate-200">{approval.reviewerName}</span>
-                  {approval.reviewerEmail && (
-                    <span className="truncate text-slate-600 dark:text-slate-300">{approval.reviewerEmail}</span>
-                  )}
-                </>
-              )}
-              {!approval.reviewerName && approval.decision === 'PENDING' && (
-                <span className="text-amber-600 dark:text-amber-400">Waiting for anyone with this role</span>
-              )}
-              <span>{formatDate(approval.createdDate)}</span>
-            </div>
+            )}
           </div>
-
-          {onNavigateToTicket && (
-            <button
-              type="button"
-              onClick={() => onNavigateToTicket(approval.fastProblemId)}
-              className="
-                shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700/80
-                px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors
-                hover:border-slate-300 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-slate-100
-                focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:ring-offset-2
-              "
-            >
-              <svg className="h-4 w-4 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              View ticket
-            </button>
-          )}
+          <span className={`shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusStyle}`}>
+            {approval.decision}
+          </span>
         </div>
 
+        {/* Title — primary content */}
+        <p className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-snug line-clamp-2 mb-2">
+          {approval.fastProblemTitle ?? `Ticket #${approval.fastProblemId}`}
+        </p>
+
+        {/* Meta row */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400 mb-3">
+          <span>{formatDate(approval.createdDate)}</span>
+          {approval.reviewerName && <span>· {approval.reviewerName}</span>}
+          {!approval.reviewerName && isPending && <span className="text-amber-600 dark:text-amber-400">· Awaiting decision</span>}
+        </div>
+
+        {/* Submission note */}
         {approval.comments && (
-          <div className="mt-4 rounded-xl bg-slate-50/90 dark:bg-slate-700/80 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-600">
-            <span className="font-medium text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Submission note</span>
-            <p className="mt-1 italic">&ldquo;{approval.comments}&rdquo;</p>
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600/50 px-3 py-2 mb-4">
+            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">&ldquo;{approval.comments}&rdquo;</p>
           </div>
         )}
 
-        {isReviewer && isPending && onApprove && onReject && (
-          <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-600">
-            {onCommentsChange !== undefined && (
-              <div className="mb-4">
-                <label htmlFor={`approval-comment-${approval.id}`} className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-                  Add comment (optional)
-                </label>
-                <textarea
-                  id={`approval-comment-${approval.id}`}
-                  placeholder="e.g. Approved for assignment to regional team..."
-                  value={comments ?? ''}
-                  onChange={(e) => onCommentsChange(e.target.value)}
-                  rows={2}
-                  disabled={actionLoading}
-                  className="
-                    w-full rounded-xl border border-slate-200 dark:border-slate-500 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-800 dark:text-slate-100
-                    placeholder:text-slate-400 dark:placeholder:text-slate-500
-                    focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-                    disabled:opacity-60 disabled:cursor-not-allowed resize-none
-                  "
-                />
-              </div>
-            )}
+        {/* View details link */}
+        {onViewTicket && (
+          <button
+            type="button"
+            onClick={() => onViewTicket(approval.fastProblemId)}
+            className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 rounded"
+            title="View ticket details"
+          >
+            <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" aria-hidden />
+            View ticket details
+          </button>
+        )}
 
-            <div className="flex flex-wrap items-center gap-3">
+        {/* Actions — only when pending and reviewer */}
+        {isReviewer && isPending && onApprove && onReject && (
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-600/60 space-y-3">
+            {onCommentsChange !== undefined && (
+              <textarea
+                id={`approval-comment-${approval.id}`}
+                aria-label="Comment (optional)"
+                placeholder="Add a comment (optional)"
+                value={comments ?? ''}
+                onChange={(e) => onCommentsChange(e.target.value)}
+                rows={2}
+                disabled={actionLoading}
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-500 bg-white dark:bg-slate-700/50 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:opacity-60 resize-none"
+              />
+            )}
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => handleAction('approve')}
                 disabled={actionLoading}
-                className="
-                  inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white
-                  shadow-sm transition-all duration-200
-                  hover:bg-primary-hover hover:shadow
-                  focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
-                  disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none
-                "
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Approve"
               >
                 {actionLoading ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden />
+                  <span className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden />
                 ) : (
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <CheckIcon className="w-5 h-5 shrink-0" aria-hidden />
                 )}
                 Approve
               </button>
@@ -190,17 +163,10 @@ export default function ApprovalCard({
                 type="button"
                 onClick={() => handleAction('reject')}
                 disabled={actionLoading}
-                className="
-                  inline-flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-500/50 bg-white dark:bg-slate-700 px-5 py-2.5 text-sm font-semibold text-rose-700 dark:text-rose-300
-                  transition-all duration-200
-                  hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-300 dark:hover:border-rose-500
-                  focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:ring-offset-2
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                "
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2.5 text-sm font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-rose-200/50 dark:border-rose-500/30"
+                title="Reject"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <NoSymbolIcon className="w-5 h-5 shrink-0" aria-hidden />
                 Reject
               </button>
             </div>

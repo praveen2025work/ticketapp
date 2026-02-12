@@ -78,6 +78,8 @@ export interface TicketProperty {
 export interface ApprovalRecord {
   id: number;
   fastProblemId: number;
+  /** Ticket title for display in approval queue. */
+  fastProblemTitle?: string;
   /** Which slot: REVIEWER, APPROVER, or RTB_OWNER. Anyone with that role can approve. */
   approvalRole?: string;
   /** Who performed the decision (set when someone approves/rejects); empty while PENDING. */

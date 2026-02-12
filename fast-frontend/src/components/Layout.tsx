@@ -55,7 +55,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 transition-colors">
-      <nav className="bg-slate-900 text-white shadow-lg">
+      <nav className="sticky top-0 z-50 bg-slate-900 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-4">
