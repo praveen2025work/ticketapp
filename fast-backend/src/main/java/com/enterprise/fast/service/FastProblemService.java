@@ -33,7 +33,24 @@ public interface FastProblemService {
 
     FastProblemResponse update(Long id, UpdateFastProblemRequest request, String username);
 
+    /** Update only the BTB Tech Lead field (username or null/empty to clear). */
+    FastProblemResponse updateBtbTechLead(Long id, String btbTechLeadUsername, String username);
+
     FastProblemResponse updateStatus(Long id, String newStatus, String username);
 
     void softDelete(Long id, String username);
+
+    FastProblemResponse addProperty(Long problemId, String key, String value);
+
+    FastProblemResponse updateProperty(Long problemId, String key, String value);
+
+    void deleteProperty(Long problemId, String key);
+
+    FastProblemResponse addLink(Long problemId, String label, String url);
+
+    void deleteLink(Long problemId, Long linkId);
+
+    FastProblemResponse addComment(Long problemId, String text, String username);
+
+    void sendEmailToAssignee(Long problemId, String message);
 }

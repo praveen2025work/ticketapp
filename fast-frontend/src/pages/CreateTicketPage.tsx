@@ -1,8 +1,9 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { problemApi } from '../shared/api/problemApi';
 import type { CreateFastProblemRequest, FastProblem } from '../shared/types';
 import TicketForm from '../components/TicketForm';
+import { useAuth } from '../shared/context/AuthContext';
 
 function buildInitialDataFromClone(ticket: FastProblem): Partial<CreateFastProblemRequest> {
   return {
@@ -13,7 +14,9 @@ function buildInitialDataFromClone(ticket: FastProblem): Partial<CreateFastProbl
     pbtId: ticket.pbtId || '',
     userImpactCount: ticket.userImpactCount || 0,
     affectedApplication: ticket.affectedApplication || '',
-    regionalCode: ticket.regionalCode,
+    requestNumber: ticket.requestNumber || '',
+    applicationIds: ticket.applications?.map((a) => a.id) ?? [],
+    regionalCodes: ticket.regionalCodes?.length ? ticket.regionalCodes : ['AMER'],
     targetResolutionHours: ticket.targetResolutionHours || 48,
     priority: ticket.priority ?? 3,
     anticipatedBenefits: ticket.anticipatedBenefits || '',
@@ -27,6 +30,7 @@ export default function CreateTicketPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const cloneFrom = (location.state as { cloneFrom?: FastProblem } | null)?.cloneFrom;
   const initialData = cloneFrom ? buildInitialDataFromClone(cloneFrom) : undefined;
 
@@ -38,6 +42,10 @@ export default function CreateTicketPage() {
       navigate(`/tickets/${result.id}`);
     },
   });
+
+  if (user && user.role !== 'ADMIN') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="max-w-3xl mx-auto">

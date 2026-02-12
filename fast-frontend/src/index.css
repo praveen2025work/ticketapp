@@ -1,10 +1,16 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: add .dark to html to enable */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --color-slate-950: #0f172a;
   --color-emerald-500: #10b981;
   --color-amber-500: #f59e0b;
+  /* Theme primary color */
+  --color-primary: #337ab7;
+  --color-primary-hover: #2868a8;
 }
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
@@ -14,6 +20,178 @@ body {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark theme: ensure text and surfaces are visible */
+.dark body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #0f172a !important;
+}
+
+.dark .text-gray-900,
+.dark .text-slate-900 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-gray-800,
+.dark .text-slate-800 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-gray-700,
+.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-gray-600,
+.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-gray-500,
+.dark .text-slate-500 {
+  color: #64748b !important;
+}
+
+.dark .border-gray-200,
+.dark .border-slate-200 {
+  border-color: #334155 !important;
+}
+
+.dark .border-gray-100,
+.dark .border-slate-100 {
+  border-color: #475569 !important;
+}
+
+/* Table/card surfaces and dividers */
+.dark .divide-y > *:not([hidden]) ~ * {
+  border-color: #334155;
+}
+.dark thead.bg-slate-50\/80,
+.dark .bg-slate-50\/80,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/90 {
+  background-color: #1e293b !important;
+}
+.dark .hover\:bg-slate-50\/80:hover {
+  background-color: #334155 !important;
+}
+
+/* Gray surfaces (cards, list items) */
+.dark .bg-gray-50 {
+  background-color: #1e293b !important;
+}
+.dark .bg-gray-100 {
+  background-color: #334155 !important;
+}
+.dark .bg-gray-200 {
+  background-color: #475569 !important;
+}
+
+/* Green (benefits, approved, resolved) */
+.dark .bg-green-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+.dark .bg-green-100 {
+  background-color: rgba(16, 185, 129, 0.25) !important;
+}
+.dark .text-green-700,
+.dark .text-green-800 {
+  color: #6ee7b7 !important;
+}
+
+/* Red / Rose (rejected, aging, errors) */
+.dark .bg-red-100,
+.dark .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.2) !important;
+}
+.dark .text-red-800,
+.dark .text-rose-800 {
+  color: #fda4af !important;
+}
+.dark .text-rose-600,
+.dark .text-rose-700 {
+  color: #fda4af !important;
+}
+.dark .bg-rose-50\/60 {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+}
+.dark .ring-rose-200\/60 {
+  --tw-ring-color: rgba(251, 113, 133, 0.4);
+}
+
+/* Yellow / Amber (pending, review) */
+.dark .bg-yellow-100 {
+  background-color: rgba(234, 179, 8, 0.2) !important;
+}
+.dark .text-yellow-800 {
+  color: #fde047 !important;
+}
+.dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+}
+.dark .text-amber-800 {
+  color: #fcd34d !important;
+}
+.dark .text-amber-600 {
+  color: #fcd34d !important;
+}
+
+/* Emerald (approved badge) */
+.dark .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.25) !important;
+}
+.dark .text-emerald-800 {
+  color: #6ee7b7 !important;
+}
+
+/* Status badges (sky, violet, orange, slate) */
+.dark .bg-sky-100 { background-color: rgba(14, 165, 233, 0.25) !important; }
+.dark .text-sky-800 { color: #7dd3fc !important; }
+.dark .bg-violet-100 { background-color: rgba(139, 92, 246, 0.25) !important; }
+.dark .text-violet-800 { color: #c4b5fd !important; }
+.dark .bg-orange-100 { background-color: rgba(249, 115, 22, 0.25) !important; }
+.dark .text-orange-800 { color: #fdba74 !important; }
+.dark .bg-slate-100 {
+  background-color: #334155 !important;
+}
+.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+.dark .bg-gray-100.text-gray-400 {
+  color: #64748b !important;
+}
+.dark .bg-green-400 {
+  background-color: #34d399 !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Primary color links/buttons: keep visible in dark (slightly lighter) */
+.dark .text-primary {
+  color: #5ba3e8 !important;
+}
+.dark .hover\:text-primary:hover {
+  color: #7ab8f0 !important;
 }
 
 @keyframes fade-in {

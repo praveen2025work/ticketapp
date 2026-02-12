@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,9 +27,13 @@ public class UpdateFastProblemRequest {
 
     private String affectedApplication;
 
+    private String requestNumber;
+
+    private List<Long> applicationIds;
+
     private String anticipatedBenefits;
 
-    private String regionalCode;
+    private List<String> regionalCodes;
 
     private Integer targetResolutionHours;
 
@@ -37,6 +43,9 @@ public class UpdateFastProblemRequest {
     private String assignedTo;
 
     private String assignmentGroup;
+
+    /** Username of the BTB Tech Lead (user with role TECH_LEAD). Assignable once all approvals are done. */
+    private String btbTechLeadUsername;
 
     private String rootCause;
 

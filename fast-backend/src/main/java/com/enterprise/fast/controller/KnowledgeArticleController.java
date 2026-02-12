@@ -6,9 +6,13 @@ import com.enterprise.fast.service.KnowledgeArticleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -50,5 +54,18 @@ public class KnowledgeArticleController {
                 updates.get("workaround"),
                 updates.get("permanentFix"),
                 updates.get("category")));
+    }
+
+    @GetMapping("/role-rules")
+    @Operation(summary = "Get role rules (who can do what)")
+    public ResponseEntity<Map<String, String>> getRoleRules() {
+        try {
+            String content = StreamUtils.copyToString(
+                    new ClassPathResource("role-rules.md").getInputStream(),
+                    StandardCharsets.UTF_8);
+            return ResponseEntity.ok(Map.of("content", content));
+        } catch (IOException e) {
+            return ResponseEntity.ok(Map.of("content", "# Role rules\n\nUnable to load role rules."));
+        }
     }
 }

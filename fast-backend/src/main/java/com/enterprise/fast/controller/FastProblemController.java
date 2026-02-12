@@ -79,6 +79,16 @@ public class FastProblemController {
         return ResponseEntity.ok(problemService.update(id, request, authentication.getName()));
     }
 
+    @PatchMapping("/{id}/btb-tech-lead")
+    @Operation(summary = "Update only the BTB Tech Lead for a problem ticket")
+    public ResponseEntity<FastProblemResponse> updateBtbTechLead(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication authentication) {
+        String username = body != null ? body.get("btbTechLeadUsername") : null;
+        return ResponseEntity.ok(problemService.updateBtbTechLead(id, username, authentication.getName()));
+    }
+
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update problem ticket status")
     public ResponseEntity<FastProblemResponse> updateStatus(
@@ -92,6 +102,80 @@ public class FastProblemController {
     @Operation(summary = "Soft delete a problem ticket (Admin only)")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
         problemService.softDelete(id, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/properties")
+    @Operation(summary = "Add or update a custom property")
+    public ResponseEntity<FastProblemResponse> addProperty(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication authentication) {
+        String key = body.get("key");
+        String value = body.get("value");
+        return ResponseEntity.ok(problemService.addProperty(id, key != null ? key : "", value != null ? value : ""));
+    }
+
+    @PutMapping("/{id}/properties/{key}")
+    @Operation(summary = "Update a custom property value")
+    public ResponseEntity<FastProblemResponse> updateProperty(
+            @PathVariable Long id,
+            @PathVariable String key,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication authentication) {
+        String value = body.get("value");
+        return ResponseEntity.ok(problemService.updateProperty(id, key, value != null ? value : ""));
+    }
+
+    @DeleteMapping("/{id}/properties/{key}")
+    @Operation(summary = "Delete a custom property")
+    public ResponseEntity<Void> deleteProperty(
+            @PathVariable Long id,
+            @PathVariable String key,
+            Authentication authentication) {
+        problemService.deleteProperty(id, key);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/links")
+    @Operation(summary = "Add a link (label + URL)")
+    public ResponseEntity<FastProblemResponse> addLink(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication authentication) {
+        String label = body.get("label");
+        String url = body.get("url");
+        return ResponseEntity.ok(problemService.addLink(id, label != null ? label : "", url != null ? url : ""));
+    }
+
+    @DeleteMapping("/{id}/links/{linkId}")
+    @Operation(summary = "Delete a link")
+    public ResponseEntity<Void> deleteLink(
+            @PathVariable Long id,
+            @PathVariable Long linkId,
+            Authentication authentication) {
+        problemService.deleteLink(id, linkId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/comments")
+    @Operation(summary = "Add a comment")
+    public ResponseEntity<FastProblemResponse> addComment(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication authentication) {
+        String text = body.get("text");
+        return ResponseEntity.ok(problemService.addComment(id, text != null ? text : "", authentication.getName()));
+    }
+
+    @PostMapping("/{id}/send-email")
+    @Operation(summary = "Send email to assignee")
+    public ResponseEntity<Void> sendEmailToAssignee(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication authentication) {
+        String message = body != null ? body.get("message") : null;
+        problemService.sendEmailToAssignee(id, message != null ? message : "");
         return ResponseEntity.noContent().build();
     }
 
@@ -157,7 +241,7 @@ public class FastProblemController {
 
     private String toCsv(List<FastProblemResponse> data) {
         StringBuilder sb = new StringBuilder();
-        sb.append("id,title,pbtId,incidentNumber,problemNumber,classification,region,status,userImpact,priority,confluenceLink,createdBy,createdDate\n");
+        sb.append("id,title,pbtId,incidentNumber,problemNumber,classification,regions,status,userImpact,priority,confluenceLink,createdBy,createdDate\n");
         if (data == null) return sb.toString();
         for (FastProblemResponse r : data) {
             if (r == null) continue;
@@ -167,7 +251,7 @@ public class FastProblemController {
             sb.append(escapeCsv(r.getServicenowIncidentNumber())).append(",");
             sb.append(escapeCsv(r.getServicenowProblemNumber())).append(",");
             sb.append(escapeCsv(r.getClassification())).append(",");
-            sb.append(escapeCsv(r.getRegionalCode())).append(",");
+            sb.append(escapeCsv(r.getRegionalCodes() != null ? String.join(";", r.getRegionalCodes()) : "")).append(",");
             sb.append(escapeCsv(r.getStatus())).append(",");
             sb.append(r.getUserImpactCount() != null ? r.getUserImpactCount() : "").append(",");
             sb.append(r.getPriority() != null ? r.getPriority() : "").append(",");

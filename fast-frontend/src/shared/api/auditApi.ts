@@ -12,6 +12,10 @@ export interface AuditLogEntry {
 }
 
 export const auditApi = {
+  getByProblemId: async (problemId: number): Promise<AuditLogEntry[]> => {
+    const response = await axiosClient.get(`/audit/problem/${problemId}`);
+    return response.data;
+  },
   getRecent: async (limit = 100): Promise<AuditLogEntry[]> => {
     const response = await axiosClient.get('/audit/recent', { params: { limit } });
     return response.data;

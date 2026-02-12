@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context file exports Provider + useAuth hook */
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { AuthUser } from '../types';
 import { authApi, setAuthApiBaseUrl } from '../api/authApi';
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
+  const localAuthByEnv = useLocalAuth();
 
   const fetchCurrentUser = useCallback(async () => {
     try {
@@ -90,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       // 3. Build-time flag VITE_AUTH_MODE=local (must be set when running npm run build)
-      if (useLocalAuth()) {
+      if (localAuthByEnv) {
         setShowRoleSwitcher(true);
         await fetchCurrentUser();
         return;
@@ -121,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     bootstrap();
     return () => { cancelled = true; };
-  }, [fetchCurrentUser]);
+  }, [fetchCurrentUser, localAuthByEnv]);
 
   const logout = () => {
     setStoredToken(null);

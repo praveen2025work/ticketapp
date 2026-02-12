@@ -1,6 +1,7 @@
 package com.enterprise.fast.mapper;
 
 import com.enterprise.fast.domain.entity.*;
+import com.enterprise.fast.dto.response.TicketCommentResponse;
 import com.enterprise.fast.domain.enums.RegionalCode;
 import com.enterprise.fast.dto.request.CreateFastProblemRequest;
 import com.enterprise.fast.dto.response.*;
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
 public class FastProblemMapper {
 
     public FastProblem toEntity(CreateFastProblemRequest request, String createdBy) {
-        return FastProblem.builder()
+        FastProblem problem = FastProblem.builder()
                 .servicenowIncidentNumber(request.getServicenowIncidentNumber())
                 .servicenowProblemNumber(request.getServicenowProblemNumber())
                 .pbtId(request.getPbtId())
@@ -23,8 +24,8 @@ public class FastProblemMapper {
                 .description(request.getDescription())
                 .userImpactCount(request.getUserImpactCount() != null ? request.getUserImpactCount() : 0)
                 .affectedApplication(request.getAffectedApplication())
+                .requestNumber(request.getRequestNumber())
                 .anticipatedBenefits(request.getAnticipatedBenefits())
-                .regionalCode(RegionalCode.valueOf(request.getRegionalCode()))
                 .targetResolutionHours(request.getTargetResolutionHours() != null ? request.getTargetResolutionHours() : 4)
                 .priority(request.getPriority() != null ? Math.max(1, Math.min(5, request.getPriority())) : 3)
                 .assignedTo(request.getAssignedTo())
@@ -32,6 +33,16 @@ public class FastProblemMapper {
                 .confluenceLink(request.getConfluenceLink())
                 .createdBy(createdBy)
                 .build();
+        if (request.getRegionalCodes() != null && !request.getRegionalCodes().isEmpty()) {
+            for (String code : request.getRegionalCodes()) {
+                FastProblemRegion r = FastProblemRegion.builder()
+                        .fastProblem(problem)
+                        .regionalCode(RegionalCode.valueOf(code))
+                        .build();
+                problem.getRegions().add(r);
+            }
+        }
+        return problem;
     }
 
     public FastProblemResponse toResponse(FastProblem entity) {
@@ -44,9 +55,20 @@ public class FastProblemMapper {
                 .description(entity.getDescription())
                 .userImpactCount(entity.getUserImpactCount())
                 .affectedApplication(entity.getAffectedApplication())
+                .requestNumber(entity.getRequestNumber())
+                .applications(entity.getApplications() != null ? entity.getApplications().stream()
+                        .map(a -> ApplicationResponse.builder()
+                                .id(a.getId())
+                                .name(a.getName())
+                                .code(a.getCode())
+                                .description(a.getDescription())
+                                .createdDate(a.getCreatedDate())
+                                .updatedDate(a.getUpdatedDate())
+                                .build())
+                        .collect(Collectors.toList()) : Collections.emptyList())
                 .anticipatedBenefits(entity.getAnticipatedBenefits())
                 .classification(entity.getClassification() != null ? entity.getClassification().name() : null)
-                .regionalCode(entity.getRegionalCode() != null ? entity.getRegionalCode().name() : null)
+                .regionalCodes(regionCodesFromEntity(entity))
                 .ticketAgeDays(entity.getTicketAgeDays())
                 .statusIndicator(entity.getStatusIndicator() != null ? entity.getStatusIndicator().name() : null)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
@@ -60,6 +82,7 @@ public class FastProblemMapper {
                 .createdBy(entity.getCreatedBy())
                 .assignedTo(entity.getAssignedTo())
                 .assignmentGroup(entity.getAssignmentGroup())
+                .btbTechLeadUsername(entity.getBtbTechLeadUsername())
                 .confluenceLink(entity.getConfluenceLink())
                 .createdDate(entity.getCreatedDate())
                 .updatedDate(entity.getUpdatedDate())
@@ -69,6 +92,15 @@ public class FastProblemMapper {
                         Collections.emptyList())
                 .incidentLinks(entity.getIncidentLinks() != null ?
                         entity.getIncidentLinks().stream().map(this::toIncidentLinkResponse).collect(Collectors.toList()) :
+                        Collections.emptyList())
+                .links(entity.getLinks() != null ?
+                        entity.getLinks().stream().map(this::toProblemLinkResponse).collect(Collectors.toList()) :
+                        Collections.emptyList())
+                .properties(entity.getProperties() != null ?
+                        entity.getProperties().stream().map(this::toPropertyResponse).collect(Collectors.toList()) :
+                        Collections.emptyList())
+                .comments(entity.getComments() != null ?
+                        entity.getComments().stream().map(this::toCommentResponse).collect(Collectors.toList()) :
                         Collections.emptyList())
                 .knowledgeArticle(entity.getKnowledgeArticle() != null ?
                         toKnowledgeArticleResponse(entity.getKnowledgeArticle()) : null)
@@ -84,8 +116,9 @@ public class FastProblemMapper {
                 .title(entity.getTitle())
                 .userImpactCount(entity.getUserImpactCount())
                 .affectedApplication(entity.getAffectedApplication())
+                .requestNumber(entity.getRequestNumber())
                 .classification(entity.getClassification() != null ? entity.getClassification().name() : null)
-                .regionalCode(entity.getRegionalCode() != null ? entity.getRegionalCode().name() : null)
+                .regionalCodes(regionCodesFromEntity(entity))
                 .ticketAgeDays(entity.getTicketAgeDays())
                 .statusIndicator(entity.getStatusIndicator() != null ? entity.getStatusIndicator().name() : null)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
@@ -94,17 +127,25 @@ public class FastProblemMapper {
                 .targetResolutionHours(entity.getTargetResolutionHours())
                 .createdBy(entity.getCreatedBy())
                 .assignedTo(entity.getAssignedTo())
+                .btbTechLeadUsername(entity.getBtbTechLeadUsername())
                 .confluenceLink(entity.getConfluenceLink())
                 .createdDate(entity.getCreatedDate())
                 .updatedDate(entity.getUpdatedDate())
                 .build();
     }
 
-    /** Keep one approval record per reviewer (earliest by id) to avoid duplicate rows from multiple submissions. */
+    private List<String> regionCodesFromEntity(FastProblem entity) {
+        if (entity.getRegions() == null || entity.getRegions().isEmpty()) return Collections.emptyList();
+        return entity.getRegions().stream()
+                .map(r -> r.getRegionalCode().name())
+                .collect(Collectors.toList());
+    }
+
+    /** One record per approval role (REVIEWER, APPROVER, RTB_OWNER); keep earliest by id if duplicates exist. */
     private List<ApprovalRecord> deduplicateApprovalRecordsByReviewer(List<ApprovalRecord> records) {
         if (records == null || records.isEmpty()) return Collections.emptyList();
         return records.stream()
-                .collect(Collectors.groupingBy(ApprovalRecord::getReviewerName))
+                .collect(Collectors.groupingBy(r -> r.getApprovalRole() != null ? r.getApprovalRole() : "LEGACY"))
                 .values().stream()
                 .map(group -> group.stream().min(Comparator.comparing(ApprovalRecord::getId)).orElseThrow())
                 .sorted(Comparator.comparing(ApprovalRecord::getId))
@@ -115,6 +156,7 @@ public class FastProblemMapper {
         return ApprovalResponse.builder()
                 .id(record.getId())
                 .fastProblemId(record.getFastProblem().getId())
+                .approvalRole(record.getApprovalRole() != null ? record.getApprovalRole().name() : null)
                 .reviewerName(record.getReviewerName())
                 .reviewerEmail(record.getReviewerEmail())
                 .decision(record.getDecision() != null ? record.getDecision().name() : null)
@@ -147,6 +189,30 @@ public class FastProblemMapper {
                 .linkType(link.getLinkType() != null ? link.getLinkType().name() : null)
                 .description(link.getDescription())
                 .linkedDate(link.getLinkedDate())
+                .build();
+    }
+
+    public TicketPropertyResponse toPropertyResponse(FastProblemProperty p) {
+        return TicketPropertyResponse.builder()
+                .key(p.getPropertyKey())
+                .value(p.getPropertyValue())
+                .build();
+    }
+
+    public FastProblemLinkResponse toProblemLinkResponse(FastProblemLink link) {
+        return FastProblemLinkResponse.builder()
+                .id(link.getId())
+                .label(link.getLabel())
+                .url(link.getUrl())
+                .build();
+    }
+
+    public TicketCommentResponse toCommentResponse(TicketComment c) {
+        return TicketCommentResponse.builder()
+                .id(c.getId())
+                .authorUsername(c.getAuthorUsername())
+                .commentText(c.getCommentText())
+                .createdDate(c.getCreatedDate())
                 .build();
     }
 }

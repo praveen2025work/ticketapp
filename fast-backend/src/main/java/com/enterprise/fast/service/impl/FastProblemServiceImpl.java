@@ -1,6 +1,8 @@
 package com.enterprise.fast.service.impl;
 
+import com.enterprise.fast.domain.entity.Application;
 import com.enterprise.fast.domain.entity.FastProblem;
+import com.enterprise.fast.domain.entity.User;
 import com.enterprise.fast.domain.enums.*;
 import com.enterprise.fast.dto.request.CreateFastProblemRequest;
 import com.enterprise.fast.dto.request.UpdateFastProblemRequest;
@@ -8,9 +10,18 @@ import com.enterprise.fast.dto.response.FastProblemResponse;
 import com.enterprise.fast.dto.response.PagedResponse;
 import com.enterprise.fast.exception.ResourceNotFoundException;
 import com.enterprise.fast.mapper.FastProblemMapper;
+import com.enterprise.fast.domain.entity.FastProblemLink;
+import com.enterprise.fast.domain.entity.FastProblemProperty;
+import com.enterprise.fast.domain.entity.TicketComment;
+import com.enterprise.fast.repository.ApplicationRepository;
+import com.enterprise.fast.repository.FastProblemLinkRepository;
+import com.enterprise.fast.repository.FastProblemPropertyRepository;
 import com.enterprise.fast.repository.FastProblemRepository;
 import com.enterprise.fast.repository.FastProblemSpecification;
+import com.enterprise.fast.repository.UserRepository;
+import com.enterprise.fast.service.AppSettingsService;
 import com.enterprise.fast.service.AuditLogService;
+import com.enterprise.fast.service.EmailService;
 import com.enterprise.fast.util.StatusTransitionValidator;
 import com.enterprise.fast.service.FastProblemService;
 import com.enterprise.fast.service.KnowledgeArticleService;
@@ -33,6 +44,12 @@ import java.util.Map;
 public class FastProblemServiceImpl implements FastProblemService {
 
     private final FastProblemRepository repository;
+    private final FastProblemPropertyRepository propertyRepository;
+    private final FastProblemLinkRepository linkRepository;
+    private final ApplicationRepository applicationRepository;
+    private final UserRepository userRepository;
+    private final AppSettingsService appSettingsService;
+    private final EmailService emailService;
     private final FastProblemMapper mapper;
     private final AuditLogService auditLogService;
     private final KnowledgeArticleService knowledgeArticleService;
@@ -49,9 +66,16 @@ public class FastProblemServiceImpl implements FastProblemService {
         // Calculate priority score
         problem.setPriorityScore(calculatePriorityScore(problem.getUserImpactCount()));
 
-        // Auto-assign regional group if not provided
-        if (problem.getAssignmentGroup() == null || problem.getAssignmentGroup().isBlank()) {
-            problem.setAssignmentGroup(problem.getRegionalCode().name() + "-Problem-Team");
+        // Auto-assign regional group if not provided (use first region)
+        if ((problem.getAssignmentGroup() == null || problem.getAssignmentGroup().isBlank())
+                && problem.getRegions() != null && !problem.getRegions().isEmpty()) {
+            problem.setAssignmentGroup(problem.getRegions().get(0).getRegionalCode().name() + "-Problem-Team");
+        }
+
+        if (request.getApplicationIds() != null && !request.getApplicationIds().isEmpty()) {
+            List<Application> apps = applicationRepository.findAllById(request.getApplicationIds());
+            problem.getApplications().clear();
+            problem.getApplications().addAll(apps);
         }
 
         FastProblem saved = repository.save(problem);
@@ -82,7 +106,7 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Transactional(readOnly = true)
     public PagedResponse<FastProblemResponse> getByRegion(String regionCode, int page, int size) {
         RegionalCode region = RegionalCode.valueOf(regionCode.toUpperCase());
-        Page<FastProblem> problemPage = repository.findByRegionalCodeAndDeletedFalse(region, PageRequest.of(page, size));
+        Page<FastProblem> problemPage = repository.findByRegions_RegionalCodeAndDeletedFalse(region, PageRequest.of(page, size));
         return toPagedResponse(problemPage);
     }
 
@@ -105,7 +129,8 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<FastProblemResponse> search(String keyword, int page, int size) {
-        Page<FastProblem> problemPage = repository.searchByKeyword(keyword, PageRequest.of(page, size));
+        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, null, null, null, null, null, null);
+        Page<FastProblem> problemPage = repository.findAll(spec, PageRequest.of(page, size, Sort.by("createdDate").descending()));
         return toPagedResponse(problemPage);
     }
 
@@ -161,11 +186,29 @@ public class FastProblemServiceImpl implements FastProblemService {
         if (request.getAffectedApplication() != null) {
             problem.setAffectedApplication(request.getAffectedApplication());
         }
+        if (request.getRequestNumber() != null) {
+            problem.setRequestNumber(request.getRequestNumber().trim().isEmpty() ? null : request.getRequestNumber().trim());
+        }
+        if (request.getApplicationIds() != null) {
+            problem.getApplications().clear();
+            if (!request.getApplicationIds().isEmpty()) {
+                List<Application> apps = applicationRepository.findAllById(request.getApplicationIds());
+                problem.getApplications().addAll(apps);
+            }
+        }
         if (request.getAnticipatedBenefits() != null) {
             problem.setAnticipatedBenefits(request.getAnticipatedBenefits());
         }
-        if (request.getRegionalCode() != null) {
-            problem.setRegionalCode(RegionalCode.valueOf(request.getRegionalCode()));
+        if (request.getRegionalCodes() != null && !request.getRegionalCodes().isEmpty()) {
+            problem.getRegions().clear();
+            for (String code : request.getRegionalCodes()) {
+                com.enterprise.fast.domain.entity.FastProblemRegion r =
+                        com.enterprise.fast.domain.entity.FastProblemRegion.builder()
+                                .fastProblem(problem)
+                                .regionalCode(RegionalCode.valueOf(code))
+                                .build();
+                problem.getRegions().add(r);
+            }
         }
         if (request.getTargetResolutionHours() != null) {
             problem.setTargetResolutionHours(request.getTargetResolutionHours());
@@ -184,6 +227,9 @@ public class FastProblemServiceImpl implements FastProblemService {
         }
         if (request.getAssignmentGroup() != null) {
             problem.setAssignmentGroup(request.getAssignmentGroup());
+        }
+        if (request.getBtbTechLeadUsername() != null) {
+            applyBtbTechLead(problem, request.getBtbTechLeadUsername());
         }
         if (request.getRootCause() != null) {
             problem.setRootCause(request.getRootCause());
@@ -211,12 +257,51 @@ public class FastProblemServiceImpl implements FastProblemService {
 
     @Override
     @Transactional
+    public FastProblemResponse updateBtbTechLead(Long id, String btbTechLeadUsername, String username) {
+        FastProblem problem = findProblemOrThrow(id);
+        String oldValue = problem.getBtbTechLeadUsername();
+        applyBtbTechLead(problem, btbTechLeadUsername != null ? btbTechLeadUsername : "");
+        FastProblem saved = repository.save(problem);
+        auditLogService.logAction(id, "FIELD_UPDATED", username, "btbTechLeadUsername", oldValue, saved.getBtbTechLeadUsername());
+        return mapper.toResponse(saved);
+    }
+
+    private void applyBtbTechLead(FastProblem problem, String value) {
+        if (value == null) {
+            problem.setBtbTechLeadUsername(null);
+            return;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            problem.setBtbTechLeadUsername(null);
+            return;
+        }
+        User techLead = userRepository.findByUsername(trimmed)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + trimmed));
+        if (techLead.getRole() != UserRole.TECH_LEAD) {
+            throw new IllegalArgumentException("BTB Tech Lead must be a user with role TECH_LEAD: " + trimmed);
+        }
+        problem.setBtbTechLeadUsername(techLead.getUsername());
+    }
+
+    @Override
+    @Transactional
     public FastProblemResponse updateStatus(Long id, String newStatus, String username) {
         FastProblem problem = findProblemOrThrow(id);
         TicketStatus targetStatus = TicketStatus.valueOf(newStatus.toUpperCase());
         TicketStatus currentStatus = problem.getStatus();
 
         StatusTransitionValidator.validate(currentStatus, targetStatus);
+
+        // Only ADMIN can close or reject a ticket directly (NEW/ASSIGNED -> CLOSED or REJECTED)
+        if ((targetStatus == TicketStatus.CLOSED || targetStatus == TicketStatus.REJECTED)
+                && (currentStatus == TicketStatus.NEW || currentStatus == TicketStatus.ASSIGNED)) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+            if (user.getRole() != UserRole.ADMIN) {
+                throw new IllegalArgumentException("Only ADMIN can close or reject a ticket from NEW or ASSIGNED");
+            }
+        }
 
         String oldStatus = currentStatus.name();
         problem.setStatus(targetStatus);
@@ -248,6 +333,121 @@ public class FastProblemServiceImpl implements FastProblemService {
         problem.setDeleted(true);
         repository.save(problem);
         auditLogService.logAction(id, "DELETED", username, "deleted", "false", "true");
+    }
+
+    @Override
+    @Transactional
+    public FastProblemResponse addProperty(Long problemId, String key, String value) {
+        FastProblem problem = findProblemOrThrow(problemId);
+        if (key == null || key.isBlank()) throw new IllegalArgumentException("Property key is required");
+        problem.getProperties().stream()
+                .filter(p -> key.equals(p.getPropertyKey()))
+                .findFirst()
+                .ifPresent(p -> {
+                    p.setPropertyValue(value != null ? value : "");
+                });
+        if (problem.getProperties().stream().noneMatch(p -> key.equals(p.getPropertyKey()))) {
+            FastProblemProperty prop = FastProblemProperty.builder()
+                    .fastProblem(problem)
+                    .propertyKey(key.trim())
+                    .propertyValue(value != null ? value : "")
+                    .build();
+            problem.getProperties().add(prop);
+        }
+        FastProblem saved = repository.save(problem);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public FastProblemResponse updateProperty(Long problemId, String key, String value) {
+        FastProblem problem = findProblemOrThrow(problemId);
+        propertyRepository.findByFastProblemIdAndPropertyKey(problemId, key).ifPresent(p -> {
+            p.setPropertyValue(value != null ? value : "");
+            propertyRepository.save(p);
+        });
+        return mapper.toResponse(repository.findById(problemId).orElseThrow());
+    }
+
+    @Override
+    @Transactional
+    public void deleteProperty(Long problemId, String key) {
+        findProblemOrThrow(problemId);
+        propertyRepository.deleteByFastProblemIdAndPropertyKey(problemId, key);
+    }
+
+    @Override
+    @Transactional
+    public FastProblemResponse addLink(Long problemId, String label, String url) {
+        FastProblem problem = findProblemOrThrow(problemId);
+        if (label == null || label.isBlank() || url == null || url.isBlank()) {
+            throw new IllegalArgumentException("Label and URL are required");
+        }
+        FastProblemLink link = FastProblemLink.builder()
+                .fastProblem(problem)
+                .label(label.trim())
+                .url(url.trim())
+                .build();
+        problem.getLinks().add(link);
+        FastProblem saved = repository.save(problem);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteLink(Long problemId, Long linkId) {
+        FastProblem problem = findProblemOrThrow(problemId);
+        problem.getLinks().removeIf(l -> l.getId().equals(linkId));
+        repository.save(problem);
+    }
+
+    @Override
+    @Transactional
+    public FastProblemResponse addComment(Long problemId, String text, String username) {
+        FastProblem problem = findProblemOrThrow(problemId);
+        if (text == null || text.isBlank()) throw new IllegalArgumentException("Comment text is required");
+        TicketComment comment = TicketComment.builder()
+                .fastProblem(problem)
+                .authorUsername(username)
+                .commentText(text.trim())
+                .build();
+        problem.getComments().add(comment);
+        FastProblem saved = repository.save(problem);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void sendEmailToAssignee(Long problemId, String message) {
+        FastProblem problem = findProblemOrThrow(problemId);
+        String assignedTo = problem.getAssignedTo();
+        if (assignedTo == null || assignedTo.isBlank()) {
+            throw new IllegalArgumentException("Ticket has no assignee");
+        }
+        User assignee = userRepository.findByUsername(assignedTo)
+                .orElseThrow(() -> new IllegalArgumentException("Assignee user not found: " + assignedTo));
+        if (assignee.getEmail() == null || assignee.getEmail().isBlank()) {
+            throw new IllegalArgumentException("Assignee has no email address");
+        }
+        Map<String, String> settings = appSettingsService.getSettings(false).getSettings();
+        if (!"true".equalsIgnoreCase(settings.get("ticketEmailEnabled"))) {
+            throw new IllegalStateException("Ticket email feature is disabled in settings");
+        }
+        String subject = "FAST Ticket #" + problem.getId() + ": " + problem.getTitle();
+        String body = "<h3>Ticket #" + problem.getId() + "</h3>"
+                + "<p><strong>Title:</strong> " + escapeHtml(problem.getTitle()) + "</p>"
+                + "<p><strong>Status:</strong> " + (problem.getStatus() != null ? problem.getStatus().name() : "") + "</p>"
+                + (problem.getDescription() != null ? "<p><strong>Description:</strong><br/>" + escapeHtml(problem.getDescription()) + "</p>" : "")
+                + (message != null && !message.isBlank() ? "<p><strong>Message:</strong><br/>" + escapeHtml(message) + "</p>" : "");
+        boolean sent = emailService.sendEmail(assignee.getEmail(), subject, body);
+        if (!sent) {
+            throw new IllegalStateException("Failed to send email");
+        }
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private FastProblem findProblemOrThrow(Long id) {

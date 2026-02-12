@@ -1,10 +1,19 @@
 // Enums
 export type Classification = 'A' | 'R' | 'P';
-export type RegionalCode = 'USDS' | 'UM' | 'JPL' | 'CHN';
+export type RegionalCode = 'APAC' | 'EMEA' | 'AMER';
 export type StatusIndicator = 'R16' | 'B16';
 export type TicketStatus = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'ROOT_CAUSE_IDENTIFIED' | 'FIX_IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED';
 export type ApprovalDecision = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type UserRole = 'ADMIN' | 'REVIEWER' | 'APPROVER' | 'RTB_OWNER' | 'TECH_LEAD' | 'READ_ONLY';
+
+export interface ApplicationRef {
+  id: number;
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  createdDate?: string;
+  updatedDate?: string | null;
+}
 
 // Response Types
 export interface FastProblem {
@@ -16,9 +25,11 @@ export interface FastProblem {
   description: string;
   userImpactCount: number;
   affectedApplication: string;
+  requestNumber?: string;
+  applications?: ApplicationRef[];
   anticipatedBenefits: string;
   classification: Classification;
-  regionalCode: RegionalCode;
+  regionalCodes: RegionalCode[];
   ticketAgeDays: number;
   statusIndicator: StatusIndicator;
   status: TicketStatus;
@@ -32,22 +43,48 @@ export interface FastProblem {
   createdBy: string;
   assignedTo: string;
   assignmentGroup: string;
+  /** BTB Tech Lead (reference) — assignable once all approvals are done. */
+  btbTechLeadUsername?: string | null;
   confluenceLink?: string;
   createdDate: string;
   updatedDate: string;
   resolvedDate: string | null;
   approvalRecords?: ApprovalRecord[];
   incidentLinks?: IncidentLink[];
+  links?: TicketLink[];
+  properties?: TicketProperty[];
+  comments?: TicketComment[];
   knowledgeArticle?: KnowledgeArticle | null;
+}
+
+export interface TicketComment {
+  id: number;
+  authorUsername: string;
+  commentText: string;
+  createdDate: string;
+}
+
+export interface TicketLink {
+  id: number;
+  label: string;
+  url: string;
+}
+
+export interface TicketProperty {
+  key: string;
+  value: string;
 }
 
 export interface ApprovalRecord {
   id: number;
   fastProblemId: number;
-  reviewerName: string;
-  reviewerEmail: string;
+  /** Which slot: REVIEWER, APPROVER, or RTB_OWNER. Anyone with that role can approve. */
+  approvalRole?: string;
+  /** Who performed the decision (set when someone approves/rejects); empty while PENDING. */
+  reviewerName?: string;
+  reviewerEmail?: string;
   decision: ApprovalDecision;
-  comments: string;
+  comments?: string;
   decisionDate: string | null;
   createdDate: string;
 }
@@ -137,12 +174,15 @@ export interface CreateFastProblemRequest {
   description?: string;
   userImpactCount?: number;
   affectedApplication?: string;
+  requestNumber?: string;
+  applicationIds?: number[];
   anticipatedBenefits?: string;
-  regionalCode: RegionalCode;
+  regionalCodes: RegionalCode[];
   targetResolutionHours?: number;
   priority?: number;
   assignedTo?: string;
   assignmentGroup?: string;
+  btbTechLeadUsername?: string | null;
   confluenceLink?: string;
 }
 
@@ -153,21 +193,19 @@ export interface UpdateFastProblemRequest {
   description?: string;
   userImpactCount?: number;
   affectedApplication?: string;
+  requestNumber?: string;
+  applicationIds?: number[];
   anticipatedBenefits?: string;
-  regionalCode?: RegionalCode;
+  regionalCodes?: RegionalCode[];
   targetResolutionHours?: number;
   priority?: number;
   assignedTo?: string;
   assignmentGroup?: string;
+  btbTechLeadUsername?: string | null;
   rootCause?: string;
   workaround?: string;
   permanentFix?: string;
   confluenceLink?: string;
-}
-
-export interface LoginRequest {
-  username: string;
-  password: string;
 }
 
 export interface AuthResponse {

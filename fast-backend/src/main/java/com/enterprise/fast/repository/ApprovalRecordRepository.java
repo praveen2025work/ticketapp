@@ -2,6 +2,7 @@ package com.enterprise.fast.repository;
 
 import com.enterprise.fast.domain.entity.ApprovalRecord;
 import com.enterprise.fast.domain.enums.ApprovalDecision;
+import com.enterprise.fast.domain.enums.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,6 +14,8 @@ public interface ApprovalRecordRepository extends JpaRepository<ApprovalRecord, 
     List<ApprovalRecord> findByFastProblemId(Long fastProblemId);
 
     List<ApprovalRecord> findByDecision(ApprovalDecision decision);
+
+    List<ApprovalRecord> findByDecisionAndApprovalRoleIn(ApprovalDecision decision, List<UserRole> approvalRoles);
 
     List<ApprovalRecord> findByReviewerNameAndDecision(String reviewerName, ApprovalDecision decision);
 

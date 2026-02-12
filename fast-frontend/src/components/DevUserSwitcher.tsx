@@ -13,13 +13,12 @@ export default function DevUserSwitcher({ variant = 'header' }: { variant?: 'hea
 
     const users = [
         { username: 'admin', role: 'ADMIN' },
+        { username: 'laks', role: 'ADMIN' },
         { username: 'siresh', role: 'REVIEWER' },
-        { username: 'vivek', role: 'REVIEWER' },
-        { username: 'kostas', role: 'APPROVER' },
-        { username: 'approver_john', role: 'APPROVER' },
-        { username: 'rtb_bob', role: 'RTB_OWNER' },
-        { username: 'tech_alice', role: 'TECH_LEAD' },
-        { username: 'unknown_user', role: 'READ_ONLY' },
+        { username: 'vivek', role: 'APPROVER' },
+        { username: 'kostas', role: 'RTB_OWNER' },
+        { username: 'prav', role: 'TECH_LEAD' },
+        { username: 'rick', role: 'READ_ONLY' },
     ];
 
     const handleUserChange = (username: string) => {

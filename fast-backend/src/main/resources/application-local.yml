@@ -1,0 +1,27 @@
+# Local development: H2 in-memory. Use with -Dspring.profiles.active=local (or default).
+# Dev and prod (org) use Oracle; see application-dev.yml and application-prod.yml.
+spring:
+  datasource:
+    url: jdbc:h2:mem:fastdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/init-h2.sql
+      data-locations: classpath:db/seed-h2.sql
+
+logging:
+  level:
+    com.enterprise.fast: DEBUG
+    org.springframework.security: DEBUG

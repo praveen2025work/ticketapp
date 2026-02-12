@@ -43,6 +43,18 @@ public class FastProblem {
     @Column(name = "affected_application", length = 100)
     private String affectedApplication;
 
+    @Column(name = "request_number", length = 100)
+    private String requestNumber;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "fast_problem_application",
+            joinColumns = @JoinColumn(name = "fast_problem_id"),
+            inverseJoinColumns = @JoinColumn(name = "application_id")
+    )
+    @Builder.Default
+    private List<Application> applications = new ArrayList<>();
+
     @Lob
     @Column(name = "anticipated_benefits")
     private String anticipatedBenefits;
@@ -52,9 +64,9 @@ public class FastProblem {
     @Builder.Default
     private Classification classification = Classification.A;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "regional_code", nullable = false, length = 10)
-    private RegionalCode regionalCode;
+    @OneToMany(mappedBy = "fastProblem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<FastProblemRegion> regions = new ArrayList<>();
 
     @Column(name = "ticket_age_days")
     @Builder.Default
@@ -107,6 +119,10 @@ public class FastProblem {
     @Column(name = "assignment_group", length = 100)
     private String assignmentGroup;
 
+    /** BTB Tech Lead (reference) — assignable once all approvals are done (ticket ASSIGNED). */
+    @Column(name = "btb_tech_lead_username", length = 50)
+    private String btbTechLeadUsername;
+
     @Column(name = "confluence_link", length = 500)
     private String confluenceLink;
 
@@ -130,10 +146,23 @@ public class FastProblem {
 
     @OneToMany(mappedBy = "fastProblem", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    private List<FastProblemProperty> properties = new ArrayList<>();
+
+    @OneToMany(mappedBy = "fastProblem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<FastProblemLink> links = new ArrayList<>();
+
+    @OneToMany(mappedBy = "fastProblem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<IncidentLink> incidentLinks = new ArrayList<>();
 
     @OneToOne(mappedBy = "fastProblem", cascade = CascadeType.ALL)
     private KnowledgeArticle knowledgeArticle;
+
+    @OneToMany(mappedBy = "fastProblem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdDate DESC")
+    @Builder.Default
+    private List<TicketComment> comments = new ArrayList<>();
 
     @OneToMany(mappedBy = "fastProblem", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

@@ -60,15 +60,16 @@ class FastProblemServiceImplTest {
                 .id(1L)
                 .title("Test Problem")
                 .classification(Classification.A)
-                .regionalCode(RegionalCode.USDS)
                 .status(TicketStatus.NEW)
                 .deleted(false)
                 .build();
+        problem.getRegions().add(com.enterprise.fast.domain.entity.FastProblemRegion.builder()
+                .fastProblem(problem).regionalCode(RegionalCode.AMER).build());
         response = FastProblemResponse.builder()
                 .id(1L)
                 .title("Test Problem")
                 .classification("A")
-                .regionalCode("USDS")
+                .regionalCodes(List.of("AMER"))
                 .status("NEW")
                 .build();
     }
@@ -122,7 +123,7 @@ class FastProblemServiceImplTest {
     void updateStatus_WithInvalidTransition_ThrowsException() {
         when(repository.findById(1L)).thenReturn(Optional.of(problem));
 
-        assertThatThrownBy(() -> service.updateStatus(1L, "CLOSED", "admin"))
+        assertThatThrownBy(() -> service.updateStatus(1L, "RESOLVED", "admin"))
                 .isInstanceOf(InvalidStateTransitionException.class);
         verify(repository, never()).save(any());
     }

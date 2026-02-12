@@ -2,8 +2,12 @@ import axiosClient from './axiosClient';
 import type { DashboardMetrics } from '../types';
 
 export const dashboardApi = {
-  getMetrics: async (): Promise<DashboardMetrics> => {
-    const response = await axiosClient.get('/dashboard/metrics');
+  getMetrics: async (params?: { region?: string; application?: string }): Promise<DashboardMetrics> => {
+    const response = await axiosClient.get('/dashboard/metrics', {
+      params: params?.region || params?.application
+        ? { region: params.region || undefined, application: params.application || undefined }
+        : undefined,
+    });
     return response.data;
   },
 

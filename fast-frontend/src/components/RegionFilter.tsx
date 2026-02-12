@@ -6,7 +6,7 @@ interface RegionFilterProps {
 }
 
 export default function RegionFilter({ value, onChange }: RegionFilterProps) {
-  const regions: RegionalCode[] = ['USDS', 'UM', 'JPL', 'CHN'];
+  const regions: RegionalCode[] = ['APAC', 'EMEA', 'AMER'];
 
   return (
     <div className="flex items-center space-x-2">

@@ -48,22 +48,12 @@ public class ApprovalServiceImpl implements ApprovalService {
             throw new IllegalArgumentException("This ticket has already been submitted for approval");
         }
 
-        // Create approval records for REVIEWER, APPROVER, and RTB_OWNER (parallel approval)
-        List<User> reviewers = userRepository.findByRoleInAndActiveTrue(
-                List.of(UserRole.REVIEWER, UserRole.APPROVER, UserRole.RTB_OWNER));
-        List<ApprovalRecord> records = reviewers.isEmpty()
-                ? List.of(ApprovalRecord.builder()
-                        .fastProblem(problem)
-                        .reviewerName(username)
-                        .reviewerEmail(null)
-                        .build())
-                : reviewers.stream()
-                        .map(user -> ApprovalRecord.builder()
-                                .fastProblem(problem)
-                                .reviewerName(user.getUsername())
-                                .reviewerEmail(user.getEmail())
-                                .build())
-                        .toList();
+        // One approval slot per role; anyone with that role can approve (no link to specific person)
+        List<ApprovalRecord> records = List.of(
+                ApprovalRecord.builder().fastProblem(problem).approvalRole(UserRole.REVIEWER).build(),
+                ApprovalRecord.builder().fastProblem(problem).approvalRole(UserRole.APPROVER).build(),
+                ApprovalRecord.builder().fastProblem(problem).approvalRole(UserRole.RTB_OWNER).build()
+        );
 
         List<ApprovalRecord> saved = approvalRepository.saveAll(records);
 
@@ -85,15 +75,21 @@ public class ApprovalServiceImpl implements ApprovalService {
         record.setDecision(ApprovalDecision.APPROVED);
         record.setComments(request.getComments());
         record.setDecisionDate(LocalDateTime.now());
+        record.setReviewerName(username);
+        record.setReviewerEmail(userRepository.findByUsername(username).map(User::getEmail).orElse(null));
 
         ApprovalRecord saved = approvalRepository.save(record);
 
-        // If approved, transition problem to ASSIGNED
+        // Move to ASSIGNED only when ALL approvals (Reviewer, Approver, RTB Owner) are done
         FastProblem problem = record.getFastProblem();
         if (problem.getStatus() == TicketStatus.NEW) {
-            problem.setStatus(TicketStatus.ASSIGNED);
-            problemRepository.save(problem);
-            auditLogService.logAction(problem.getId(), "STATUS_CHANGED", username, "status", "NEW", "ASSIGNED");
+            long approvedCount = approvalRepository.countByFastProblemIdAndDecision(problem.getId(), ApprovalDecision.APPROVED);
+            long totalForProblem = approvalRepository.findByFastProblemId(problem.getId()).size();
+            if (approvedCount == totalForProblem && totalForProblem >= 3) {
+                problem.setStatus(TicketStatus.ASSIGNED);
+                problemRepository.save(problem);
+                auditLogService.logAction(problem.getId(), "STATUS_CHANGED", username, "status", "NEW", "ASSIGNED");
+            }
         }
 
         auditLogService.logAction(problem.getId(), "APPROVED", username, null, null, null);
@@ -114,15 +110,14 @@ public class ApprovalServiceImpl implements ApprovalService {
         record.setDecision(ApprovalDecision.REJECTED);
         record.setComments(request.getComments());
         record.setDecisionDate(LocalDateTime.now());
+        record.setReviewerName(username);
+        record.setReviewerEmail(userRepository.findByUsername(username).map(User::getEmail).orElse(null));
 
         ApprovalRecord saved = approvalRepository.save(record);
 
-        // If all approvals are rejected, reject the problem
+        // Any one rejection moves the ticket to REJECTED
         FastProblem problem = record.getFastProblem();
-        long pendingCount = approvalRepository.countByFastProblemIdAndDecision(problem.getId(), ApprovalDecision.PENDING);
-        long approvedCount = approvalRepository.countByFastProblemIdAndDecision(problem.getId(), ApprovalDecision.APPROVED);
-
-        if (pendingCount == 0 && approvedCount == 0) {
+        if (problem.getStatus() == TicketStatus.NEW) {
             problem.setStatus(TicketStatus.REJECTED);
             problemRepository.save(problem);
             auditLogService.logAction(problem.getId(), "STATUS_CHANGED", username, "status", "NEW", "REJECTED");
@@ -135,17 +130,25 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ApprovalResponse> getPendingApprovals(String reviewerUsername) {
-        return approvalRepository.findByReviewerNameAndDecision(reviewerUsername, ApprovalDecision.PENDING).stream()
-                .map(mapper::toApprovalResponse)
-                .collect(Collectors.toList());
+    public List<ApprovalResponse> getPendingApprovals(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        List<ApprovalRecord> pending;
+        if (user.getRole() == UserRole.ADMIN) {
+            pending = approvalRepository.findByDecision(ApprovalDecision.PENDING);
+        } else if (user.getRole() == UserRole.REVIEWER || user.getRole() == UserRole.APPROVER || user.getRole() == UserRole.RTB_OWNER) {
+            pending = approvalRepository.findByDecisionAndApprovalRoleIn(ApprovalDecision.PENDING, List.of(user.getRole()));
+        } else {
+            pending = List.of();
+        }
+        return pending.stream().map(mapper::toApprovalResponse).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ApprovalResponse> getApprovalHistory(Long problemId) {
         return approvalRepository.findByFastProblemId(problemId).stream()
-                .collect(Collectors.groupingBy(ApprovalRecord::getReviewerName))
+                .collect(Collectors.groupingBy(r -> r.getApprovalRole() != null ? r.getApprovalRole() : "LEGACY"))
                 .values().stream()
                 .map(group -> group.stream().min(Comparator.comparing(ApprovalRecord::getId)).orElseThrow())
                 .sorted(Comparator.comparing(ApprovalRecord::getId))

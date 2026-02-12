@@ -1,6 +1,5 @@
 import axios from 'axios';
-import axiosClient from './axiosClient';
-import type { AdUser, AuthResponse, BamAuthResponse, LoginRequest } from '../types';
+import type { AdUser, BamAuthResponse } from '../types';
 
 const defaultBaseURL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '') || '/api/v1';
 
@@ -18,12 +17,6 @@ export function setAuthApiBaseUrl(url: string): void {
 }
 
 export const authApi = {
-  /** Legacy login (local only) */
-  login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await axiosClient.post('/auth/login', data);
-    return response.data;
-  },
-
   /** Get BAM token (Windows Auth). Call with credentials. */
   getBamToken: async (appName: string, redirectURL: string): Promise<BamAuthResponse> => {
     const response = await axiosWithCredentials.get<BamAuthResponse>('/bam/token', {

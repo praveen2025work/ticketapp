@@ -37,15 +37,15 @@ export default function StatusTimeline({ currentStatus }: { currentStatus: Ticke
           <div key={status} className="flex items-center">
             <div className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
               isCurrent
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-primary text-white'
                 : isCompleted
                   ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-400'
+                  : 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500'
             }`}>
               {statusLabels[status]}
             </div>
             {index < statusFlow.length - 1 && (
-              <div className={`w-4 h-0.5 ${isCompleted ? 'bg-green-400' : 'bg-gray-200'}`} />
+              <div className={`w-4 h-0.5 ${isCompleted ? 'bg-green-400 dark:bg-emerald-500' : 'bg-gray-200 dark:bg-slate-600'}`} />
             )}
           </div>
         );

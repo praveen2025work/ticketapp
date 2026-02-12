@@ -22,9 +22,11 @@ public class FastProblemResponse {
     private String description;
     private Integer userImpactCount;
     private String affectedApplication;
+    private String requestNumber;
+    private List<ApplicationResponse> applications;
     private String anticipatedBenefits;
     private String classification;
-    private String regionalCode;
+    private List<String> regionalCodes;
     private Integer ticketAgeDays;
     private String statusIndicator;
     private String status;
@@ -38,11 +40,15 @@ public class FastProblemResponse {
     private String createdBy;
     private String assignedTo;
     private String assignmentGroup;
+    private String btbTechLeadUsername;
     private String confluenceLink;
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
     private LocalDateTime resolvedDate;
     private List<ApprovalResponse> approvalRecords;
     private List<IncidentLinkResponse> incidentLinks;
+    private List<FastProblemLinkResponse> links;
+    private List<TicketPropertyResponse> properties;
+    private List<TicketCommentResponse> comments;
     private KnowledgeArticleResponse knowledgeArticle;
 }

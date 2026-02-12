@@ -30,6 +30,9 @@ public final class FastProblemSpecification {
                                                         String application, LocalDate fromDate, LocalDate toDate,
                                                         String statusFilter) {
         return (root, query, cb) -> {
+            if (regionCode != null && !regionCode.isBlank()) {
+                query.distinct(true);
+            }
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("deleted"), false));
 
@@ -37,9 +40,11 @@ public final class FastProblemSpecification {
                 String pattern = "%" + keyword.toLowerCase() + "%";
                 Predicate keywordPredicate = cb.or(
                         cb.like(cb.lower(root.get("title")), pattern),
-                        cb.like(cb.lower(root.get("pbtId")), pattern),
-                        cb.like(cb.lower(root.get("servicenowIncidentNumber")), pattern),
-                        cb.like(cb.lower(root.get("servicenowProblemNumber")), pattern)
+                        cb.like(cb.lower(cb.coalesce(root.get("description"), "")), pattern),
+                        cb.like(cb.lower(cb.coalesce(root.get("pbtId"), "")), pattern),
+                        cb.like(cb.lower(cb.coalesce(root.get("servicenowIncidentNumber"), "")), pattern),
+                        cb.like(cb.lower(cb.coalesce(root.get("servicenowProblemNumber"), "")), pattern),
+                        cb.like(cb.lower(cb.coalesce(root.get("affectedApplication"), "")), pattern)
                 );
                 predicates.add(keywordPredicate);
             }
@@ -47,7 +52,8 @@ public final class FastProblemSpecification {
             if (regionCode != null && !regionCode.isBlank()) {
                 try {
                     RegionalCode region = RegionalCode.valueOf(regionCode.toUpperCase());
-                    predicates.add(cb.equal(root.get("regionalCode"), region));
+                    var regionJoin = root.join("regions", jakarta.persistence.criteria.JoinType.INNER);
+                    predicates.add(cb.equal(regionJoin.get("regionalCode"), region));
                 } catch (IllegalArgumentException ignored) {
                 }
             }

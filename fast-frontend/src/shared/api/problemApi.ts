@@ -49,6 +49,14 @@ export const problemApi = {
     return response.data;
   },
 
+  /** Update only BTB Tech Lead (avoids full PUT and 500 on partial payload). */
+  updateBtbTechLead: async (id: number, btbTechLeadUsername: string): Promise<FastProblem> => {
+    const response = await axiosClient.patch(`/problems/${id}/btb-tech-lead`, {
+      btbTechLeadUsername: btbTechLeadUsername || '',
+    });
+    return response.data;
+  },
+
   updateStatus: async (id: number, status: string): Promise<FastProblem> => {
     const response = await axiosClient.patch(`/problems/${id}/status`, { status });
     return response.data;
@@ -73,5 +81,37 @@ export const problemApi = {
   search: async (q: string, page = 0, size = 20): Promise<PagedResponse<FastProblem>> => {
     const response = await axiosClient.get('/problems/search', { params: { q, page, size } });
     return response.data;
+  },
+
+  addProperty: async (id: number, key: string, value: string): Promise<FastProblem> => {
+    const response = await axiosClient.post(`/problems/${id}/properties`, { key, value });
+    return response.data;
+  },
+
+  updateProperty: async (id: number, key: string, value: string): Promise<FastProblem> => {
+    const response = await axiosClient.put(`/problems/${id}/properties/${encodeURIComponent(key)}`, { value });
+    return response.data;
+  },
+
+  deleteProperty: async (id: number, key: string): Promise<void> => {
+    await axiosClient.delete(`/problems/${id}/properties/${encodeURIComponent(key)}`);
+  },
+
+  addLink: async (id: number, label: string, url: string): Promise<FastProblem> => {
+    const response = await axiosClient.post(`/problems/${id}/links`, { label, url });
+    return response.data;
+  },
+
+  deleteLink: async (id: number, linkId: number): Promise<void> => {
+    await axiosClient.delete(`/problems/${id}/links/${linkId}`);
+  },
+
+  addComment: async (id: number, text: string): Promise<FastProblem> => {
+    const response = await axiosClient.post(`/problems/${id}/comments`, { text });
+    return response.data;
+  },
+
+  sendEmailToAssignee: async (id: number, message?: string): Promise<void> => {
+    await axiosClient.post(`/problems/${id}/send-email`, { message: message ?? '' });
   },
 };

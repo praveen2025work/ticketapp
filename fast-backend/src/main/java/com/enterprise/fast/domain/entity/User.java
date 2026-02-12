@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -25,9 +27,6 @@ public class User {
 
     @Column(length = 20, unique = true)
     private String brid;
-
-    @Column(nullable = true) // Nullable for LDAP users
-    private String password;
 
     @Column(nullable = false, unique = true, length = 100)
     private String email;
@@ -49,4 +48,16 @@ public class User {
     @Column(name = "created_date")
     @Builder.Default
     private LocalDateTime createdDate = LocalDateTime.now();
+
+    @Column(name = "updated_date")
+    private LocalDateTime updatedDate;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_application",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "application_id")
+    )
+    @Builder.Default
+    private List<Application> applications = new ArrayList<>();
 }

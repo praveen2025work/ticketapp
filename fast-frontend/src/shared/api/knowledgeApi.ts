@@ -11,4 +11,9 @@ export const knowledgeApi = {
     const response = await axiosClient.get(`/knowledge/${id}`);
     return response.data;
   },
+
+  getRoleRules: async (): Promise<{ content: string }> => {
+    const response = await axiosClient.get('/knowledge/role-rules');
+    return response.data;
+  },
 };

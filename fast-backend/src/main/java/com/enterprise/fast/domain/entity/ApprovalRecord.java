@@ -1,6 +1,7 @@
 package com.enterprise.fast.domain.entity;
 
 import com.enterprise.fast.domain.enums.ApprovalDecision;
+import com.enterprise.fast.domain.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,7 +24,13 @@ public class ApprovalRecord {
     @JoinColumn(name = "fast_problem_id", nullable = false)
     private FastProblem fastProblem;
 
-    @Column(name = "reviewer_name", nullable = false, length = 100)
+    /** Which approval slot this is: REVIEWER, APPROVER, or RTB_OWNER. Anyone with that role can approve. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_role", nullable = false, length = 20)
+    private UserRole approvalRole;
+
+    /** Who performed the decision (set when someone approves/rejects); null while PENDING. */
+    @Column(name = "reviewer_name", length = 100)
     private String reviewerName;
 
     @Column(name = "reviewer_email", length = 100)

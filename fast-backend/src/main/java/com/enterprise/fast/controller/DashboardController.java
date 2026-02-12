@@ -8,8 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.Map;
 
 @RestController
@@ -21,9 +23,11 @@ public class DashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/metrics")
-    @Operation(summary = "Get overall dashboard metrics")
-    public ResponseEntity<DashboardMetricsResponse> getMetrics() {
-        return ResponseEntity.ok(dashboardService.getOverallMetrics());
+    @Operation(summary = "Get overall dashboard metrics (optionally filtered by region and application)")
+    public ResponseEntity<DashboardMetricsResponse> getMetrics(
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String application) {
+        return ResponseEntity.ok(dashboardService.getOverallMetrics(region, application));
     }
 
     @GetMapping("/metrics/region")
@@ -41,7 +45,7 @@ public class DashboardController {
     @GetMapping("/metrics/sla-compliance")
     @Operation(summary = "Get SLA compliance percentage")
     public ResponseEntity<Map<String, Double>> getSlaCompliance() {
-        return ResponseEntity.ok(Map.of("slaCompliancePercentage", dashboardService.getSlaCompliancePercentage()));
+        return ResponseEntity.ok(Collections.singletonMap("slaCompliancePercentage", dashboardService.getSlaCompliancePercentage()));
     }
 
     @GetMapping("/metrics/aging")

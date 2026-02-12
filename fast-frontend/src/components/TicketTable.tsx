@@ -35,44 +35,54 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
     (ticket.ticketAgeDays ?? 0) >= AGING_THRESHOLD_DAYS;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-slate-200">
-        <thead className="bg-slate-50/80">
+    <div className="overflow-x-auto w-full min-w-0">
+      <table className="w-full table-fixed divide-y divide-slate-200 dark:divide-slate-600">
+        <colgroup>
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '26%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '14%' }} />
+        </colgroup>
+        <thead className="bg-slate-50/80 dark:bg-slate-800/80">
           <tr>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               ID / INC
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Title
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Region
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Class
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Status
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Age
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Impact
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Priority
             </th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-slate-100">
+        <tbody className="bg-white dark:bg-slate-800/50 divide-y divide-slate-100 dark:divide-slate-600">
           {tickets.map((ticket) => {
             const aging = isAging(ticket);
             return (
               <tr
                 key={ticket.id}
-                className={`hover:bg-slate-50/80 transition-all duration-200 ${
-                  aging ? 'animate-subtle-glow bg-rose-50/60 ring-1 ring-rose-200/60' : ''
+                className={`hover:bg-slate-50/80 dark:hover:bg-slate-700/80 transition-all duration-200 ${
+                  aging ? 'animate-subtle-glow bg-rose-50/60 dark:bg-rose-900/30 ring-1 ring-rose-200/60 dark:ring-rose-500/40' : ''
                 }`}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -88,22 +98,22 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
                       />
                     )}
                     <div>
-                      <div className="text-sm font-semibold text-emerald-600 group-hover:text-emerald-700 group-hover:underline">
+                      <div className="text-sm font-semibold text-primary group-hover:underline">
                         #{ticket.id}
                       </div>
-                      <div className="text-xs text-slate-500">{ticket.servicenowIncidentNumber || '-'}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{ticket.servicenowIncidentNumber || '-'}</div>
                     </div>
                   </Link>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-slate-900 truncate max-w-xs font-medium" title={ticket.title}>
+                <td className="px-6 py-4 min-w-0">
+                  <div className="text-sm text-slate-900 dark:text-slate-100 truncate font-medium" title={ticket.title}>
                     {ticket.title}
                   </div>
-                  <div className="text-xs text-slate-500 truncate max-w-xs">{ticket.affectedApplication || '-'}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{ticket.affectedApplication || '-'}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2.5 py-0.5 bg-slate-100 rounded-md text-xs font-medium text-slate-700">
-                    {ticket.regionalCode}
+                <td className="px-6 py-4 min-w-0">
+                  <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-md text-xs font-medium text-slate-700 dark:text-slate-200 truncate max-w-full inline-block" title={ticket.regionalCodes?.length ? ticket.regionalCodes.join(', ') : undefined}>
+                    {ticket.regionalCodes?.length ? ticket.regionalCodes.join(', ') : '—'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -118,16 +128,16 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
-                    className={`text-sm font-medium ${aging ? 'text-rose-600' : 'text-slate-600'}`}
+                    className={`text-sm font-medium ${aging ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}
                     title={aging ? `Over ${AGING_THRESHOLD_DAYS} days - attention needed` : undefined}
                   >
                     {ticket.ticketAgeDays ?? 0}d
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 text-center">
                   {ticket.userImpactCount}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 text-center font-medium">
                   {formatPriority(ticket.priority)}
                 </td>
               </tr>
@@ -141,11 +151,11 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
 
 export default function TicketTable({ tickets, isLoading, groupBy = 'none' }: TicketTableProps) {
   if (isLoading) {
-    return <div className="text-center py-8 text-slate-500">Loading...</div>;
+    return <div className="text-center py-8 text-slate-500 dark:text-slate-400">Loading...</div>;
   }
 
   if (tickets.length === 0) {
-    return <div className="text-center py-8 text-slate-500">No tickets found</div>;
+    return <div className="text-center py-8 text-slate-500 dark:text-slate-400">No tickets found</div>;
   }
 
   if (groupBy === 'application') {
@@ -161,8 +171,8 @@ export default function TicketTable({ tickets, isLoading, groupBy = 'none' }: Ti
       <div className="space-y-8">
         {sortedApps.map((app) => (
           <div key={app}>
-            <h3 className="px-6 py-3 text-sm font-semibold text-slate-700 bg-slate-100 border-b border-slate-200">
-              {app} <span className="text-slate-500 font-normal">({grouped[app].length} ticket{grouped[app].length !== 1 ? 's' : ''})</span>
+            <h3 className="px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-600">
+              {app} <span className="text-slate-500 dark:text-slate-400 font-normal">({grouped[app].length} ticket{grouped[app].length !== 1 ? 's' : ''})</span>
             </h3>
             <TicketTableInner tickets={grouped[app]} />
           </div>

@@ -12,8 +12,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -43,7 +41,6 @@ public class SecurityConfig {
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/v1/bam/**").permitAll() // BAM SSO endpoints
-                        .requestMatchers("/api/v1/auth/login").permitAll() // Login form (local mode)
 
                         // Allow all authenticated users (including READ_ONLY) to view data
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").authenticated()
@@ -54,12 +51,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/problems/**")
                         .hasAnyRole("ADMIN", "RTB_OWNER", "TECH_LEAD")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/problems/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/problems/*/status")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/problems/*/status", "/api/v1/problems/*/btb-tech-lead")
+                        .hasAnyRole("ADMIN", "RTB_OWNER", "TECH_LEAD")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/problems/*/send-email")
                         .hasAnyRole("ADMIN", "RTB_OWNER", "TECH_LEAD")
 
-                        // Knowledge base (update = ADMIN + TECH_LEAD)
+                        // Knowledge base (update = ADMIN, RTB_OWNER, TECH_LEAD per role-rules)
                         .requestMatchers(HttpMethod.PUT, "/api/v1/knowledge/**")
-                        .hasAnyRole("ADMIN", "TECH_LEAD")
+                        .hasAnyRole("ADMIN", "RTB_OWNER", "TECH_LEAD")
 
                         // Approval endpoints — ADMIN submits; REVIEWER, APPROVER, RTB_OWNER approve/reject
                         .requestMatchers(HttpMethod.POST, "/api/v1/approvals/problems/*/submit")
@@ -72,6 +71,15 @@ public class SecurityConfig {
                         // Admin endpoints
                         .requestMatchers("/api/v1/auth/register").hasRole("ADMIN")
                         .requestMatchers("/api/v1/audit/recent").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/settings").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/settings").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/tech-leads").hasAnyRole("ADMIN", "RTB_OWNER")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/applications").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/applications", "/api/v1/applications/*").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/applications").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/applications/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/applications/*").hasRole("ADMIN")
 
                         // All other authenticated endpoints
                         .anyRequest().authenticated())
@@ -79,11 +87,6 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 
     @Bean

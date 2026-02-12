@@ -51,10 +51,11 @@ export default function ApprovalCard({
   return (
     <article
       className={`
-        group relative overflow-hidden rounded-2xl border bg-white text-left shadow-sm
+        group relative overflow-hidden rounded-2xl border bg-white dark:bg-slate-800/80 text-left shadow-sm
         transition-all duration-300 ease-out
-        hover:shadow-md hover:border-slate-200
-        ${isPending ? 'border-amber-200/60 ring-1 ring-amber-100/50' : 'border-slate-100'}
+        hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600
+        border-slate-200 dark:border-slate-600
+        ${isPending ? 'border-amber-200/60 dark:border-amber-500/50 ring-1 ring-amber-100/50 dark:ring-amber-500/30' : ''}
       `}
     >
       {isPending && (
@@ -70,14 +71,14 @@ export default function ApprovalCard({
                   type="button"
                   onClick={() => onNavigateToTicket(approval.fastProblemId)}
                   className="
-                    text-lg font-semibold text-slate-900 transition-colors hover:text-emerald-600
-                    focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:ring-offset-2 rounded-lg
+                    text-lg font-semibold text-slate-900 dark:text-slate-100 transition-colors hover:text-primary
+                    focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 rounded-lg
                   "
                 >
                   Ticket #{approval.fastProblemId}
                 </button>
               ) : (
-                <span className="text-lg font-semibold text-slate-900">
+                <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Ticket #{approval.fastProblemId}
                 </span>
               )}
@@ -91,10 +92,23 @@ export default function ApprovalCard({
               </span>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
-              <span className="font-medium text-slate-700">{approval.reviewerName}</span>
-              {approval.reviewerEmail && (
-                <span className="truncate">{approval.reviewerEmail}</span>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+              {approval.approvalRole && (
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  {approval.approvalRole.replace(/_/g, ' ')} approval
+                </span>
+              )}
+              {approval.reviewerName && (
+                <>
+                  <span className="text-slate-500 dark:text-slate-400">Decided by</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">{approval.reviewerName}</span>
+                  {approval.reviewerEmail && (
+                    <span className="truncate text-slate-600 dark:text-slate-300">{approval.reviewerEmail}</span>
+                  )}
+                </>
+              )}
+              {!approval.reviewerName && approval.decision === 'PENDING' && (
+                <span className="text-amber-600 dark:text-amber-400">Waiting for anyone with this role</span>
               )}
               <span>{formatDate(approval.createdDate)}</span>
             </div>
@@ -105,13 +119,13 @@ export default function ApprovalCard({
               type="button"
               onClick={() => onNavigateToTicket(approval.fastProblemId)}
               className="
-                shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/80
-                px-3.5 py-2 text-sm font-medium text-slate-700 transition-colors
-                hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900
+                shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700/80
+                px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors
+                hover:border-slate-300 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-slate-100
                 focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:ring-offset-2
               "
             >
-              <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-4 w-4 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
               View ticket
@@ -120,17 +134,17 @@ export default function ApprovalCard({
         </div>
 
         {approval.comments && (
-          <div className="mt-4 rounded-xl bg-slate-50/90 px-4 py-3 text-sm text-slate-600 border border-slate-100">
-            <span className="font-medium text-slate-500 text-xs uppercase tracking-wide">Submission note</span>
+          <div className="mt-4 rounded-xl bg-slate-50/90 dark:bg-slate-700/80 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-600">
+            <span className="font-medium text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">Submission note</span>
             <p className="mt-1 italic">&ldquo;{approval.comments}&rdquo;</p>
           </div>
         )}
 
         {isReviewer && isPending && onApprove && onReject && (
-          <div className="mt-6 pt-5 border-t border-slate-100">
+          <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-600">
             {onCommentsChange !== undefined && (
               <div className="mb-4">
-                <label htmlFor={`approval-comment-${approval.id}`} className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label htmlFor={`approval-comment-${approval.id}`} className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                   Add comment (optional)
                 </label>
                 <textarea
@@ -141,9 +155,9 @@ export default function ApprovalCard({
                   rows={2}
                   disabled={actionLoading}
                   className="
-                    w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800
-                    placeholder:text-slate-400
-                    focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400
+                    w-full rounded-xl border border-slate-200 dark:border-slate-500 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-800 dark:text-slate-100
+                    placeholder:text-slate-400 dark:placeholder:text-slate-500
+                    focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
                     disabled:opacity-60 disabled:cursor-not-allowed resize-none
                   "
                 />
@@ -156,10 +170,10 @@ export default function ApprovalCard({
                 onClick={() => handleAction('approve')}
                 disabled={actionLoading}
                 className="
-                  inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white
+                  inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white
                   shadow-sm transition-all duration-200
-                  hover:bg-emerald-700 hover:shadow
-                  focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2
+                  hover:bg-primary-hover hover:shadow
+                  focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
                   disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none
                 "
               >
@@ -177,9 +191,9 @@ export default function ApprovalCard({
                 onClick={() => handleAction('reject')}
                 disabled={actionLoading}
                 className="
-                  inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-sm font-semibold text-rose-700
+                  inline-flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-500/50 bg-white dark:bg-slate-700 px-5 py-2.5 text-sm font-semibold text-rose-700 dark:text-rose-300
                   transition-all duration-200
-                  hover:bg-rose-50 hover:border-rose-300
+                  hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-300 dark:hover:border-rose-500
                   focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:ring-offset-2
                   disabled:opacity-50 disabled:cursor-not-allowed
                 "

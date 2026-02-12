@@ -15,6 +15,8 @@ public class ApprovalResponse {
 
     private Long id;
     private Long fastProblemId;
+    /** Which approval slot: REVIEWER, APPROVER, or RTB_OWNER. */
+    private String approvalRole;
     private String reviewerName;
     private String reviewerEmail;
     private String decision;

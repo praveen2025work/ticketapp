@@ -1,19 +1,40 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { approvalApi } from '../shared/api/approvalApi';
+import { problemApi } from '../shared/api/problemApi';
 import type { ApprovalRecord } from '../shared/types';
 import ApprovalCard from '../components/ApprovalCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useAuth } from '../shared/context/AuthContext';
+
+const ROLES_CAN_APPROVE = ['ADMIN', 'REVIEWER', 'APPROVER', 'RTB_OWNER'];
 
 export default function ApprovalQueuePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [comments, setComments] = useState<Record<number, string>>({});
+  const isAdmin = user?.role === 'ADMIN';
 
   const { data: approvals = [], isLoading } = useQuery<ApprovalRecord[]>({
     queryKey: ['approvals', 'pending'],
     queryFn: () => approvalApi.getPending(),
+  });
+
+  const { data: assignedTicketsData, isLoading: assignedLoading } = useQuery({
+    queryKey: ['problems', 'status', 'ASSIGNED'],
+    queryFn: () => problemApi.getByStatus('ASSIGNED', 0, 50),
+    enabled: isAdmin,
+  });
+  const assignedTickets = assignedTicketsData?.content ?? [];
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) => problemApi.updateStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['problems'] });
+      queryClient.invalidateQueries({ queryKey: ['problems', 'status', 'ASSIGNED'] });
+    },
   });
 
   const approveMutation = useMutation({
@@ -32,6 +53,10 @@ export default function ApprovalQueuePage() {
     (approveMutation.isPending && approveMutation.variables?.approvalId === approvalId) ||
     (rejectMutation.isPending && rejectMutation.variables?.approvalId === approvalId);
 
+  if (user && !ROLES_CAN_APPROVE.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   if (isLoading) {
     return <LoadingSpinner message="Loading approvals..." />;
   }
@@ -41,10 +66,10 @@ export default function ApprovalQueuePage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
             Approval queue
           </h1>
-          <p className="mt-1 text-slate-600">
+          <p className="mt-1 text-slate-600 dark:text-slate-300">
             {approvals.length === 0
               ? 'No tickets waiting for your decision.'
               : approvals.length === 1
@@ -60,21 +85,21 @@ export default function ApprovalQueuePage() {
             >
               {approvals.length}
             </span>
-            <span className="text-sm text-slate-500">pending</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">pending</span>
           </div>
         )}
       </div>
 
       {/* Content */}
       {approvals.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-12 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500">
             <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-slate-900">All caught up</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">
+          <h2 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">All caught up</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
             When tickets are submitted for approval, they’ll show up here. You can also browse tickets from the main list.
           </p>
           <button
@@ -111,6 +136,52 @@ export default function ApprovalQueuePage() {
               />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* For ADMIN: tickets with approvals complete (ASSIGNED) — action items */}
+      {isAdmin && (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
+            Action items — approvals complete
+          </h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            Tickets that have passed all approvals. Assign BTB Tech Lead and move to In Progress from the ticket.
+          </p>
+          {assignedLoading ? (
+            <p className="text-sm text-slate-500">Loading...</p>
+          ) : assignedTickets.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No tickets in ASSIGNED status.</p>
+          ) : (
+            <ul className="space-y-2">
+              {assignedTickets.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex flex-wrap items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"
+                >
+                  <span className="font-mono text-sm text-slate-500 dark:text-slate-400">#{t.id}</span>
+                  <span className="flex-1 min-w-0 truncate text-slate-900 dark:text-slate-100">{t.title}</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/tickets/${t.id}`)}
+                      className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    >
+                      Open ticket
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => statusMutation.mutate({ id: t.id, status: 'IN_PROGRESS' })}
+                      disabled={statusMutation.isPending && statusMutation.variables?.id === t.id}
+                      className="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-50"
+                    >
+                      {statusMutation.isPending && statusMutation.variables?.id === t.id ? 'Updating...' : 'Move to In Progress'}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>
