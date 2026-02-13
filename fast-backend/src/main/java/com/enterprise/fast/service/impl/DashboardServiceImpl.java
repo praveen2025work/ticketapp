@@ -1,10 +1,16 @@
 package com.enterprise.fast.service.impl;
 
 import com.enterprise.fast.domain.entity.FastProblem;
+import com.enterprise.fast.domain.entity.FastProblemLink;
 import com.enterprise.fast.domain.enums.Classification;
+import com.enterprise.fast.domain.enums.ExternalLinkType;
+import com.enterprise.fast.domain.enums.RagStatus;
 import com.enterprise.fast.domain.enums.RegionalCode;
 import com.enterprise.fast.domain.enums.TicketStatus;
 import com.enterprise.fast.dto.response.DashboardMetricsResponse;
+import com.enterprise.fast.dto.response.FastProblemResponse;
+import com.enterprise.fast.mapper.FastProblemMapper;
+import com.enterprise.fast.repository.FastProblemLinkRepository;
 import com.enterprise.fast.repository.FastProblemRegionRepository;
 import com.enterprise.fast.repository.FastProblemRepository;
 import com.enterprise.fast.repository.FastProblemSpecification;
@@ -17,12 +23,16 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.enterprise.fast.domain.enums.TicketStatus.CLOSED;
 import static com.enterprise.fast.domain.enums.TicketStatus.RESOLVED;
@@ -38,31 +48,54 @@ import static com.enterprise.fast.domain.enums.TicketStatus.ROOT_CAUSE_IDENTIFIE
 public class DashboardServiceImpl implements DashboardService {
 
     private final FastProblemRepository problemRepository;
+    private final FastProblemLinkRepository linkRepository;
     private final FastProblemRegionRepository problemRegionRepository;
     private final KnowledgeArticleRepository articleRepository;
+    private final FastProblemMapper fastProblemMapper;
 
     private static final Set<TicketStatus> OPEN_STATUSES = Set.of(
             NEW, ASSIGNED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS);
 
     @Override
-    public DashboardMetricsResponse getOverallMetrics(String region, String application) {
+    public DashboardMetricsResponse getOverallMetrics(String region, String application, String period) {
+        LocalDate periodFrom = null;
+        LocalDate periodTo = LocalDate.now();
+        if (period != null && !period.isBlank()) {
+            if ("weekly".equalsIgnoreCase(period)) {
+                periodFrom = periodTo.minusDays(7);
+            } else if ("monthly".equalsIgnoreCase(period)) {
+                periodFrom = periodTo.minusDays(30);
+            }
+        }
+
         boolean hasFilter = (region != null && !region.isBlank()) || (application != null && !application.isBlank());
-        if (!hasFilter) {
+        if (!hasFilter && periodFrom == null) {
             return getOverallMetricsUnfiltered();
         }
-        Specification<FastProblem> baseSpec = FastProblemSpecification.withFilters(
-                null, region, null, application, null, null, null);
 
-        long totalOpen = problemRepository.count(baseSpec.and((root, q, cb) ->
-                root.get("status").in(OPEN_STATUSES)));
-        long totalResolved = problemRepository.count(baseSpec.and((root, q, cb) ->
-                cb.equal(root.get("status"), RESOLVED)));
-        long totalClosed = problemRepository.count(baseSpec.and((root, q, cb) ->
-                cb.equal(root.get("status"), CLOSED)));
+        Specification<FastProblem> baseSpec = periodFrom != null
+                ? FastProblemSpecification.withFilters(null, region, null, application, periodFrom, periodTo, null, null, null)
+                : FastProblemSpecification.withFilters(null, region, null, application, null, null, null);
 
-        List<FastProblem> resolvedList = problemRepository.findAll(
-                baseSpec.and((root, q, cb) -> root.get("status").in(List.of(RESOLVED, CLOSED))),
-                PageRequest.of(0, 50_000)).getContent();
+        long totalOpen;
+        long totalResolved;
+        long totalClosed;
+        if (periodFrom != null) {
+            totalOpen = problemRepository.count(baseSpec.and((root, q, cb) -> root.get("status").in(OPEN_STATUSES)));
+            Specification<FastProblem> resolvedSpec = FastProblemSpecification.withFilters(null, region, null, application, null, null, periodFrom, periodTo, null);
+            totalResolved = problemRepository.count(resolvedSpec.and((root, q, cb) -> cb.equal(root.get("status"), RESOLVED)));
+            totalClosed = problemRepository.count(resolvedSpec.and((root, q, cb) -> cb.equal(root.get("status"), CLOSED)));
+        } else {
+            totalOpen = problemRepository.count(baseSpec.and((root, q, cb) -> root.get("status").in(OPEN_STATUSES)));
+            totalResolved = problemRepository.count(baseSpec.and((root, q, cb) -> cb.equal(root.get("status"), RESOLVED)));
+            totalClosed = problemRepository.count(baseSpec.and((root, q, cb) -> cb.equal(root.get("status"), CLOSED)));
+        }
+
+        Specification<FastProblem> resolvedListSpec = periodFrom != null
+                ? FastProblemSpecification.withFilters(null, region, null, application, null, null, periodFrom, periodTo, null)
+                        .and((root, q, cb) -> root.get("status").in(List.of(RESOLVED, CLOSED)))
+                : baseSpec.and((root, q, cb) -> root.get("status").in(List.of(RESOLVED, CLOSED)));
+        List<FastProblem> resolvedList = problemRepository.findAll(resolvedListSpec, PageRequest.of(0, 50_000)).getContent();
 
         return DashboardMetricsResponse.builder()
                 .totalOpenTickets(totalOpen)
@@ -71,6 +104,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .averageResolutionTimeHours(computeAverageResolutionTimeHoursFromList(resolvedList))
                 .slaCompliancePercentage(computeSlaCompliancePercentageFromList(resolvedList))
                 .ticketsByClassification(getTicketsByClassificationWithSpec(baseSpec))
+                .ticketsByRag(getTicketsByRagWithSpec(baseSpec))
                 .ticketsByRegion(getTicketsByRegionWithSpec(baseSpec))
                 .ticketsByStatus(getTicketsByStatusWithSpec(baseSpec))
                 .avgResolutionByRegion(computeResolutionTimeByRegionFromList(resolvedList))
@@ -94,6 +128,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .averageResolutionTimeHours(computeAverageResolutionTimeHours())
                 .slaCompliancePercentage(computeSlaCompliancePercentage())
                 .ticketsByClassification(getTicketsByClassification())
+                .ticketsByRag(getTicketsByRag())
                 .ticketsByRegion(getTicketsByRegion())
                 .ticketsByStatus(getTicketsByStatus())
                 .avgResolutionByRegion(computeResolutionTimeByRegion())
@@ -113,6 +148,86 @@ public class DashboardServiceImpl implements DashboardService {
             result.put(cls.name(), problemRepository.countByClassification(cls));
         }
         return result;
+    }
+
+    private Map<String, Long> getTicketsByRag() {
+        Map<String, Long> result = new LinkedHashMap<>();
+        for (RagStatus rag : RagStatus.values()) {
+            result.put(rag.name(), problemRepository.countByRagStatus(rag));
+        }
+        return result;
+    }
+
+    @Override
+    public List<FastProblemResponse> getInProgressWithoutRecentComment() {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+        List<FastProblem> inProgress = problemRepository.findByStatusAndDeletedFalseWithComments(IN_PROGRESS);
+        List<FastProblemResponse> result = new ArrayList<>();
+        for (FastProblem fp : inProgress) {
+            LocalDateTime lastComment = fp.getComments() == null || fp.getComments().isEmpty()
+                    ? null
+                    : fp.getComments().stream()
+                            .map(c -> c.getCreatedDate() != null ? c.getCreatedDate() : LocalDateTime.MIN)
+                            .max(Comparator.naturalOrder())
+                            .orElse(null);
+            if (lastComment == null || lastComment.isBefore(cutoff)) {
+                result.add(fastProblemMapper.toSummaryResponse(fp));
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public List<FastProblemResponse> getTop10(String region) {
+        List<FastProblem> open = problemRepository.findByStatusInAndDeletedFalse(List.of(
+                NEW, ASSIGNED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS));
+        List<FastProblem> filtered = region != null && !region.isBlank()
+                ? open.stream().filter(fp -> fp.getRegions() != null && fp.getRegions().stream()
+                        .anyMatch(pr -> pr.getRegionalCode().name().equalsIgnoreCase(region)))
+                        .collect(Collectors.toList())
+                : open;
+        Comparator<FastProblem> byRag = Comparator.comparing(fp ->
+                fp.getRagStatus() == RagStatus.R ? 0 : fp.getRagStatus() == RagStatus.A ? 1 : 2);
+        Comparator<FastProblem> byPriority = Comparator.comparing(fp -> fp.getPriority() != null ? fp.getPriority() : 5);
+        Comparator<FastProblem> byAge = Comparator.comparing(fp -> -(fp.getTicketAgeDays() != null ? fp.getTicketAgeDays() : 0));
+        Comparator<FastProblem> byImpact = Comparator.comparing(fp -> -(fp.getUserImpactCount() != null ? fp.getUserImpactCount() : 0));
+        return filtered.stream()
+                .sorted(byRag.thenComparing(byPriority).thenComparing(byAge).thenComparing(byImpact))
+                .limit(10)
+                .map(fastProblemMapper::toSummaryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<FastProblemResponse> getBacklog(String region) {
+        List<FastProblem> backlog = problemRepository.findByStatusInAndDeletedFalse(List.of(NEW, ASSIGNED));
+        List<FastProblem> filtered = region != null && !region.isBlank()
+                ? backlog.stream().filter(fp -> fp.getRegions() != null && fp.getRegions().stream()
+                        .anyMatch(pr -> pr.getRegionalCode().name().equalsIgnoreCase(region)))
+                        .collect(Collectors.toList())
+                : backlog;
+        return filtered.stream()
+                .sorted(Comparator.comparing(FastProblem::getCreatedDate, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(fastProblemMapper::toSummaryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<FastProblemResponse> getUpstream(String linkType) {
+        List<ExternalLinkType> types = linkType != null && !linkType.isBlank()
+                ? (linkType.equalsIgnoreCase("JIRA") ? List.of(ExternalLinkType.JIRA)
+                : linkType.equalsIgnoreCase("SERVICEFIRST") ? List.of(ExternalLinkType.SERVICEFIRST)
+                : List.of(ExternalLinkType.JIRA, ExternalLinkType.SERVICEFIRST))
+                : List.of(ExternalLinkType.JIRA, ExternalLinkType.SERVICEFIRST);
+        List<FastProblem> upstream = problemRepository.findByLinksLinkTypeInAndDeletedFalse(types);
+        upstream.sort(Comparator.comparing(FastProblem::getUpdatedDate, Comparator.nullsLast(Comparator.reverseOrder())));
+        if (upstream.isEmpty()) return List.of();
+        List<Long> problemIds = upstream.stream().map(FastProblem::getId).toList();
+        List<FastProblemLink> allLinks = linkRepository.findByFastProblem_IdInOrderByFastProblemIdAscIdAsc(problemIds);
+        Map<Long, List<FastProblemLink>> linksByProblemId = allLinks.stream()
+                .collect(Collectors.groupingBy(l -> l.getFastProblem().getId()));
+        upstream.forEach(fp -> fp.setLinks(linksByProblemId.getOrDefault(fp.getId(), List.of())));
+        return upstream.stream().map(fastProblemMapper::toSummaryResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -282,6 +397,16 @@ public class DashboardServiceImpl implements DashboardService {
             long count = problemRepository.count(baseSpec.and((root, q, cb) ->
                     cb.equal(root.get("classification"), cls)));
             result.put(cls.name(), count);
+        }
+        return result;
+    }
+
+    private Map<String, Long> getTicketsByRagWithSpec(Specification<FastProblem> baseSpec) {
+        Map<String, Long> result = new LinkedHashMap<>();
+        for (RagStatus rag : RagStatus.values()) {
+            long count = problemRepository.count(baseSpec.and((root, q, cb) ->
+                    cb.equal(root.get("ragStatus"), rag)));
+            result.put(rag.name(), count);
         }
         return result;
     }

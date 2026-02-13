@@ -6,6 +6,7 @@ import { problemApi } from '../shared/api/problemApi';
 import { applicationsApi } from '../shared/api/applicationsApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
+import ApiErrorState from '../components/ApiErrorState';
 
 export default function AuditLogPage({ embedded }: { embedded?: boolean } = {}) {
   const [fromDate, setFromDate] = useState('');
@@ -46,7 +47,7 @@ export default function AuditLogPage({ embedded }: { embedded?: boolean } = {}) 
 
   const tickets = useMemo(() => ticketsResponse?.content ?? [], [ticketsResponse]);
 
-  const { data: logs = [], isLoading: auditLoading, error } = useQuery({
+  const { data: logs = [], isLoading: auditLoading, error, refetch } = useQuery({
     queryKey: ['audit', 'problem', selectedTicketId],
     queryFn: () => auditApi.getByProblemId(selectedTicketId!),
     enabled: selectedTicketId != null && selectedTicketId > 0,
@@ -209,11 +210,15 @@ export default function AuditLogPage({ embedded }: { embedded?: boolean } = {}) 
       {selectedTicketId != null && (
         <>
           {error && (
-            <div className="text-center py-4 text-red-500 dark:text-red-400 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-              Failed to load audit log. Check that the ticket exists.
-            </div>
+            <ApiErrorState
+              title="Failed to load audit log"
+              error={error}
+              onRetry={() => refetch()}
+              fallbackMessage="Check that the ticket exists and try again."
+              className="text-center py-6 px-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+            />
           )}
-          {isLoading && <LoadingSpinner message="Loading audit log..." />}
+          {isLoading && !error && <LoadingSpinner message="Loading audit log..." />}
           {!isLoading && !error && (
             <>
               {filteredLogs.length === 0 ? (

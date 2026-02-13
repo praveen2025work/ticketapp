@@ -49,6 +49,14 @@ export default function ApprovalCard({
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
+  const approvalRoleLabel = (role: string | undefined) => {
+    if (!role) return 'Approval';
+    if (role === 'REVIEWER') return 'Finance';
+    if (role === 'APPROVER') return 'Tech';
+    if (role === 'RTB_OWNER') return 'RTB';
+    return role.replace(/_/g, ' ');
+  };
+
   const statusStyles = {
     PENDING: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
     APPROVED: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
@@ -88,7 +96,7 @@ export default function ApprovalCard({
             )}
             {approval.approvalRole && (
               <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                {approval.approvalRole.replace(/_/g, ' ')}
+                {approvalRoleLabel(approval.approvalRole)}
               </span>
             )}
           </div>

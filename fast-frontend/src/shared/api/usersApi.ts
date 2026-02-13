@@ -28,14 +28,19 @@ export const usersApi = {
     return response.data;
   },
 
-  /** List users with role TECH_LEAD (for BTB Tech Lead assignment on tickets). */
-  listTechLeads: async (): Promise<UserResponse[]> => {
-    const response = await axiosClient.get<UserResponse[]>('/users/tech-leads');
+  /** List users with role TECH_LEAD (for BTB Tech Lead assignment). When applicationIds are provided, only returns tech leads linked to at least one of those applications (ticket impacted apps). */
+  listTechLeads: async (applicationIds?: number[]): Promise<UserResponse[]> => {
+    const params = applicationIds?.length ? { applicationIds } : {};
+    const response = await axiosClient.get<UserResponse[]>('/users/tech-leads', { params });
     return response.data;
   },
 
   register: async (payload: RegisterPayload): Promise<unknown> => {
-    const response = await axiosClient.post('/auth/register', payload);
+    const normalized = {
+      ...payload,
+      username: (payload.username ?? '').trim().toLowerCase(),
+    };
+    const response = await axiosClient.post('/auth/register', normalized);
     return response.data;
   },
 

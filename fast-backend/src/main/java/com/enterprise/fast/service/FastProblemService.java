@@ -48,6 +48,8 @@ public interface FastProblemService {
 
     FastProblemResponse addLink(Long problemId, String label, String url);
 
+    FastProblemResponse addLink(Long problemId, String label, String url, String linkType);
+
     void deleteLink(Long problemId, Long linkId);
 
     FastProblemResponse addComment(Long problemId, String text, String username);

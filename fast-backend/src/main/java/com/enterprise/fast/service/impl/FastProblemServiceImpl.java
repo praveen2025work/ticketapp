@@ -200,14 +200,31 @@ public class FastProblemServiceImpl implements FastProblemService {
             problem.setAnticipatedBenefits(request.getAnticipatedBenefits());
         }
         if (request.getRegionalCodes() != null && !request.getRegionalCodes().isEmpty()) {
-            problem.getRegions().clear();
-            for (String code : request.getRegionalCodes()) {
-                com.enterprise.fast.domain.entity.FastProblemRegion r =
-                        com.enterprise.fast.domain.entity.FastProblemRegion.builder()
-                                .fastProblem(problem)
-                                .regionalCode(RegionalCode.valueOf(code))
-                                .build();
-                problem.getRegions().add(r);
+            List<RegionalCode> desired = request.getRegionalCodes().stream()
+                    .filter(c -> c != null && !c.isBlank())
+                    .distinct()
+                    .map(c -> {
+                        try {
+                            return RegionalCode.valueOf(c.trim().toUpperCase());
+                        } catch (IllegalArgumentException e) {
+                            return null;
+                        }
+                    })
+                    .filter(rc -> rc != null)
+                    .toList();
+            // Remove regions not in desired (orphanRemoval will delete rows)
+            problem.getRegions().removeIf(r -> !desired.contains(r.getRegionalCode()));
+            // Add only regions that are not already present (avoids unique constraint on save)
+            java.util.Set<RegionalCode> existing = problem.getRegions().stream()
+                    .map(com.enterprise.fast.domain.entity.FastProblemRegion::getRegionalCode)
+                    .collect(java.util.stream.Collectors.toSet());
+            for (RegionalCode rc : desired) {
+                if (!existing.contains(rc)) {
+                    problem.getRegions().add(com.enterprise.fast.domain.entity.FastProblemRegion.builder()
+                            .fastProblem(problem)
+                            .regionalCode(rc)
+                            .build());
+                }
             }
         }
         if (request.getTargetResolutionHours() != null) {
@@ -228,8 +245,10 @@ public class FastProblemServiceImpl implements FastProblemService {
         if (request.getAssignmentGroup() != null) {
             problem.setAssignmentGroup(request.getAssignmentGroup());
         }
-        if (request.getBtbTechLeadUsername() != null) {
-            applyBtbTechLead(problem, request.getBtbTechLeadUsername());
+        if (request.getBtbTechLeadUsername() != null && !request.getBtbTechLeadUsername().isBlank()) {
+            applyBtbTechLead(problem, request.getBtbTechLeadUsername().trim());
+        } else if (request.getBtbTechLeadUsername() != null && request.getBtbTechLeadUsername().isBlank()) {
+            problem.setBtbTechLeadUsername(null);
         }
         if (request.getRootCause() != null) {
             problem.setRootCause(request.getRootCause());
@@ -276,7 +295,7 @@ public class FastProblemServiceImpl implements FastProblemService {
             problem.setBtbTechLeadUsername(null);
             return;
         }
-        User techLead = userRepository.findByUsername(trimmed)
+        User techLead = userRepository.findByUsernameIgnoreCase(trimmed)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + trimmed));
         if (techLead.getRole() != UserRole.TECH_LEAD) {
             throw new IllegalArgumentException("BTB Tech Lead must be a user with role TECH_LEAD: " + trimmed);
@@ -296,7 +315,7 @@ public class FastProblemServiceImpl implements FastProblemService {
         // Only ADMIN can close or reject a ticket directly (NEW/ASSIGNED -> CLOSED or REJECTED)
         if ((targetStatus == TicketStatus.CLOSED || targetStatus == TicketStatus.REJECTED)
                 && (currentStatus == TicketStatus.NEW || currentStatus == TicketStatus.ASSIGNED)) {
-            User user = userRepository.findByUsername(username)
+            User user = userRepository.findByUsernameIgnoreCase(username)
                     .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
             if (user.getRole() != UserRole.ADMIN) {
                 throw new IllegalArgumentException("Only ADMIN can close or reject a ticket from NEW or ASSIGNED");
@@ -379,14 +398,28 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Override
     @Transactional
     public FastProblemResponse addLink(Long problemId, String label, String url) {
+        return addLink(problemId, label, url, null);
+    }
+
+    @Override
+    @Transactional
+    public FastProblemResponse addLink(Long problemId, String label, String url, String linkType) {
         FastProblem problem = findProblemOrThrow(problemId);
         if (label == null || label.isBlank() || url == null || url.isBlank()) {
             throw new IllegalArgumentException("Label and URL are required");
+        }
+        com.enterprise.fast.domain.enums.ExternalLinkType type = com.enterprise.fast.domain.enums.ExternalLinkType.OTHER;
+        if (linkType != null && !linkType.isBlank()) {
+            try {
+                type = com.enterprise.fast.domain.enums.ExternalLinkType.valueOf(linkType.toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+            }
         }
         FastProblemLink link = FastProblemLink.builder()
                 .fastProblem(problem)
                 .label(label.trim())
                 .url(url.trim())
+                .linkType(type)
                 .build();
         problem.getLinks().add(link);
         FastProblem saved = repository.save(problem);
@@ -424,7 +457,7 @@ public class FastProblemServiceImpl implements FastProblemService {
         if (assignedTo == null || assignedTo.isBlank()) {
             throw new IllegalArgumentException("Ticket has no assignee");
         }
-        User assignee = userRepository.findByUsername(assignedTo)
+        User assignee = userRepository.findByUsernameIgnoreCase(assignedTo)
                 .orElseThrow(() -> new IllegalArgumentException("Assignee user not found: " + assignedTo));
         if (assignee.getEmail() == null || assignee.getEmail().isBlank()) {
             throw new IllegalArgumentException("Assignee has no email address");

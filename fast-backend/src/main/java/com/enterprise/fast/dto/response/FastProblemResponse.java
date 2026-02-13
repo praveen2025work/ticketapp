@@ -28,6 +28,7 @@ public class FastProblemResponse {
     private String classification;
     private List<String> regionalCodes;
     private Integer ticketAgeDays;
+    private String ragStatus;
     private String statusIndicator;
     private String status;
     private Double priorityScore;

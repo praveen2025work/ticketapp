@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import { knowledgeApi } from '../shared/api/knowledgeApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
+import ApiErrorState from '../components/ApiErrorState';
 
 const markdownComponents = {
   h1: ({ children }: { children?: ReactNode }) => <h1 className="text-xl font-bold text-gray-900 mt-4 mb-2 first:mt-0">{children}</h1>,
@@ -30,7 +31,7 @@ export default function KnowledgeBasePage() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [roleRulesOpen, setRoleRulesOpen] = useState(true);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['knowledge', 0, 20],
     queryFn: () => knowledgeApi.getAll(0, 20),
   });
@@ -41,7 +42,16 @@ export default function KnowledgeBasePage() {
   });
 
   if (isLoading) return <LoadingSpinner message="Loading knowledge base..." />;
-  if (error) return <div className="text-center py-8 text-red-500">Failed to load knowledge articles</div>;
+  if (error) {
+    return (
+      <ApiErrorState
+        title="Failed to load knowledge articles"
+        error={error}
+        onRetry={() => refetch()}
+        className="text-center py-8 px-4"
+      />
+    );
+  }
 
   const articles = data?.content ?? [];
 

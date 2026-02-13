@@ -46,7 +46,7 @@ public class LdapAuthenticationFilter extends OncePerRequestFilter {
                 log.debug("Processing LDAP authentication for user: {}", username);
 
                 // Look up user in database
-                Optional<User> userOptional = userRepository.findByUsername(username);
+                Optional<User> userOptional = userRepository.findByUsernameIgnoreCase(username);
 
                 UserRole role;
                 String fullName;

@@ -2,18 +2,49 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../shared/context/AuthContext';
 import { settingsApi } from '../shared/api/settingsApi';
+import { getApiError, getApiErrorMessage } from '../shared/utils/apiError';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ApiErrorState from '../components/ApiErrorState';
+import toast from 'react-hot-toast';
+import { EyeIcon, XMarkIcon, PaperAirplaneIcon, ArrowDownTrayIcon, ClipboardDocumentIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+
+const ZONES = ['APAC', 'EMEA', 'AMER'] as const;
 
 export default function SettingsPage({ embedded, readOnly }: { embedded?: boolean; readOnly?: boolean } = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [local, setLocal] = useState<Record<string, string>>({});
+  const [showReportPreview, setShowReportPreview] = useState(false);
+  const [previewZone, setPreviewZone] = useState<string>('APAC');
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsApi.get(),
     enabled: Boolean(user),
   });
+
+  const { data: previewData, isLoading: previewLoading, error: previewError } = useQuery({
+    queryKey: ['dailyReportPreview', previewZone],
+    queryFn: () => settingsApi.getDailyReportPreview(previewZone),
+    enabled: showReportPreview && Boolean(user),
+  });
+
+  const [previewIframeSrc, setPreviewIframeSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!showReportPreview || !previewData?.html || typeof previewData.html !== 'string' || previewData.html.trim() === '') {
+      setPreviewIframeSrc((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return;
+    }
+    const blob = new Blob([previewData.html], { type: 'text/html; charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    setPreviewIframeSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+  }, [showReportPreview, previewData?.html]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local state from server when settings load
@@ -36,7 +67,16 @@ export default function SettingsPage({ embedded, readOnly }: { embedded?: boolea
   };
 
   if (isLoading) return <LoadingSpinner message="Loading settings..." />;
-  if (error) return <div className="text-center py-8 text-red-500">Failed to load settings</div>;
+  if (error) {
+    return (
+      <ApiErrorState
+        title="Failed to load settings"
+        error={error}
+        onRetry={() => refetch()}
+        className="text-center py-8 px-4"
+      />
+    );
+  }
 
   return (
     <div className={`space-y-8 ${embedded ? '' : 'max-w-2xl mx-auto'}`}>
@@ -106,9 +146,21 @@ export default function SettingsPage({ embedded, readOnly }: { embedded?: boolea
       </section>
 
       {/* Daily reports */}
-      <section className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Daily Reports</h2>
-        <p className="text-sm text-gray-500 mb-4">Send digest per zone (APAC, EMEA, AMER). Enable globally and per zone.</p>
+      <section className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 border border-slate-200 dark:border-slate-600">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-slate-100 mb-1">Daily Reports</h2>
+            <p className="text-sm text-gray-500 dark:text-slate-400">Send digest per zone (APAC, EMEA, AMER). Enable globally and per zone.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setPreviewZone('APAC'); setShowReportPreview(true); }}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-700 dark:text-slate-200 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shrink-0"
+          >
+            <EyeIcon className="w-4 h-4" aria-hidden />
+            Preview template
+          </button>
+        </div>
         <div className="space-y-4">
           <label className="flex items-center gap-2">
             <input
@@ -169,6 +221,126 @@ export default function SettingsPage({ embedded, readOnly }: { embedded?: boolea
           })}
         </div>
       </section>
+
+      {/* Daily report preview modal – full screen */}
+      {showReportPreview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-800" role="dialog" aria-modal="true" aria-labelledby="report-preview-title">
+          <div className="flex items-center justify-between gap-4 p-3 border-b border-slate-200 dark:border-slate-600 shrink-0">
+              <h3 id="report-preview-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">Daily Report – Template preview</h3>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 shrink-0">
+                  {previewData?.html ? (
+                    <a
+                      href={`mailto:?subject=${encodeURIComponent(`Daily Report – ${previewZone} – ${new Date().toISOString().slice(0, 10)}`)}`}
+                      className="inline-flex items-center justify-center p-2 rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors"
+                      title="Open email client"
+                    >
+                      <PaperAirplaneIcon className="w-4 h-4" aria-hidden />
+                    </a>
+                  ) : (
+                    <span
+                      className="inline-flex items-center justify-center p-2 rounded-lg bg-slate-200 dark:bg-slate-600 text-slate-400 cursor-not-allowed"
+                      title="Load preview first"
+                    >
+                      <PaperAirplaneIcon className="w-4 h-4" aria-hidden />
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!previewData?.html}
+                    onClick={() => {
+                      if (!previewData?.html) return;
+                      const blob = new Blob([previewData.html], { type: 'text/html' });
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, '_blank', 'noopener');
+                      setTimeout(() => URL.revokeObjectURL(url), 60000);
+                    }}
+                    className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="View in new tab"
+                  >
+                    <ArrowTopRightOnSquareIcon className="w-4 h-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!previewData?.html}
+                    onClick={() => {
+                      if (!previewData?.html) return;
+                      navigator.clipboard.writeText(previewData.html).then(
+                        () => toast.success('HTML copied to clipboard.'),
+                        () => toast.error('Copy failed')
+                      );
+                    }}
+                    className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Copy HTML"
+                  >
+                    <ClipboardDocumentIcon className="w-4 h-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!previewData?.html}
+                    onClick={() => {
+                      if (!previewData?.html) return;
+                      const blob = new Blob([previewData.html], { type: 'text/html' });
+                      const a = document.createElement('a');
+                      a.href = URL.createObjectURL(blob);
+                      a.download = `daily-report-${previewZone}-${new Date().toISOString().slice(0, 10)}.html`;
+                      a.click();
+                      URL.revokeObjectURL(a.href);
+                    }}
+                    className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Download HTML"
+                  >
+                    <ArrowDownTrayIcon className="w-4 h-4" aria-hidden />
+                  </button>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span>Zone</span>
+                  <select
+                    value={previewZone}
+                    onChange={(e) => setPreviewZone(e.target.value)}
+                    className="rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-2 py-1.5 text-sm"
+                  >
+                    {ZONES.map((z) => (
+                      <option key={z} value={z}>{z}</option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowReportPreview(false)}
+                  className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  aria-label="Close preview"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden bg-slate-100 dark:bg-slate-900/50">
+              {previewLoading ? (
+                <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">Loading preview…</div>
+              ) : previewError ? (
+                <div className="h-full flex flex-col items-center justify-center gap-2 text-rose-600 dark:text-rose-400 text-sm px-4 text-center">
+                  <span>Failed to load preview.</span>
+                  <span className="text-slate-600 dark:text-slate-400 font-normal">
+                    {getApiError(previewError)?.status === 401 && 'Not signed in. Please refresh and sign in.'}
+                    {getApiError(previewError)?.status === 403 && 'You don’t have permission to view the preview.'}
+                    {(!getApiError(previewError) || (getApiError(previewError)!.status !== 401 && getApiError(previewError)!.status !== 403)) && getApiErrorMessage(previewError, 'Try another zone or check the network tab.')}
+                  </span>
+                </div>
+              ) : previewIframeSrc ? (
+                <iframe
+                  key={`${previewZone}-${previewIframeSrc}`}
+                  title="Daily report template preview"
+                  src={previewIframeSrc}
+                  className="w-full h-full min-h-0 border-0 bg-white"
+                  sandbox="allow-same-origin"
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">No preview available.</div>
+              )}
+            </div>
+        </div>
+      )}
 
       {/* Ticket email */}
       <section className="bg-white rounded-lg shadow p-6">

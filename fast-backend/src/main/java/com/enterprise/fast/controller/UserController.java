@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.enterprise.fast.domain.enums.UserRole;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -84,9 +85,15 @@ public class UserController {
 
     @GetMapping("/tech-leads")
     @Transactional(readOnly = true)
-    @Operation(summary = "List TECH_LEAD users (for BTB Tech Lead assignment)")
-    public ResponseEntity<List<UserResponse>> listTechLeads() {
-        List<User> techLeads = userRepository.findByRoleInAndActiveTrue(Collections.singletonList(UserRole.TECH_LEAD));
+    @Operation(summary = "List TECH_LEAD users (for BTB Tech Lead assignment). When applicationIds are provided, only returns tech leads linked to at least one of those applications (ticket impacted apps).")
+    public ResponseEntity<List<UserResponse>> listTechLeads(
+            @RequestParam(required = false) List<Long> applicationIds) {
+        List<User> techLeads;
+        if (applicationIds != null && !applicationIds.isEmpty()) {
+            techLeads = new ArrayList<>(userRepository.findTechLeadsByApplicationIds(UserRole.TECH_LEAD, applicationIds));
+        } else {
+            techLeads = userRepository.findByRoleInAndActiveTrue(Collections.singletonList(UserRole.TECH_LEAD));
+        }
         return ResponseEntity.ok(techLeads.stream().map(this::toUserResponse).toList());
     }
 
@@ -103,7 +110,7 @@ public class UserController {
                 .orElse("READ_ONLY");
 
         // Try to get full user details from database
-        User user = userRepository.findByUsername(username).orElse(null);
+        User user = userRepository.findByUsernameIgnoreCase(username).orElse(null);
 
         AuthResponse response;
         if (user != null) {

@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
 
     <name>FAST Problem Ticket System</name>
-    <description>Fast Acceleration Support Team - Enterprise Problem Management</description>
+    <description>Finance – Accelerated Support Team - Enterprise Problem Management</description>
 
     <modules>
         <module>fast-backend</module>

@@ -6,6 +6,7 @@ import com.enterprise.fast.domain.enums.RegionalCode;
 import com.enterprise.fast.domain.enums.TicketStatus;
 import org.springframework.data.jpa.domain.Specification;
 
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -29,9 +30,20 @@ public final class FastProblemSpecification {
     public static Specification<FastProblem> withFilters(String keyword, String regionCode, String classification,
                                                         String application, LocalDate fromDate, LocalDate toDate,
                                                         String statusFilter) {
+        return withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, statusFilter);
+    }
+
+    /** Same as above with optional resolvedDate range for period metrics (weekly/monthly). */
+    public static Specification<FastProblem> withFilters(String keyword, String regionCode, String classification,
+                                                        String application, LocalDate fromDate, LocalDate toDate,
+                                                        LocalDate resolvedFrom, LocalDate resolvedTo,
+                                                        String statusFilter) {
         return (root, query, cb) -> {
             if (regionCode != null && !regionCode.isBlank()) {
                 query.distinct(true);
+            }
+            if (application != null && !application.isBlank()) {
+                query.distinct(true); // applications join can produce multiple rows per ticket
             }
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("deleted"), false));
@@ -68,13 +80,20 @@ public final class FastProblemSpecification {
 
             if (application != null && !application.isBlank()) {
                 String normalized = normalizeApplication(application);
+                String appTrimmed = application.trim();
+                // Match EITHER affectedApplication (free-text) OR linked applications (many-to-many)
+                List<Predicate> appPredicates = new ArrayList<>();
                 if (!normalized.isEmpty()) {
                     var appField = root.get("affectedApplication");
                     var coalesced = cb.coalesce(appField, "");
                     var replaced = cb.function("REPLACE", String.class, coalesced, cb.literal(" "), cb.literal(""));
                     var dbNormalized = cb.lower(replaced);
-                    predicates.add(cb.like(dbNormalized, "%" + normalized + "%"));
+                    appPredicates.add(cb.like(dbNormalized, "%" + normalized + "%"));
                 }
+                // Match tickets linked to Application by name (dashboard sends application name)
+                var appJoin = root.join("applications", JoinType.LEFT);
+                appPredicates.add(cb.equal(cb.lower(appJoin.get("name")), appTrimmed.toLowerCase()));
+                predicates.add(cb.or(appPredicates.toArray(new Predicate[0])));
             }
 
             if (fromDate != null) {
@@ -82,6 +101,12 @@ public final class FastProblemSpecification {
             }
             if (toDate != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("createdDate"), toDate.atTime(23, 59, 59)));
+            }
+            if (resolvedFrom != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("resolvedDate"), resolvedFrom.atStartOfDay()));
+            }
+            if (resolvedTo != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("resolvedDate"), resolvedTo.atTime(23, 59, 59)));
             }
 
             if (statusFilter != null && !statusFilter.isBlank()) {

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 95" width="200" height="95" aria-hidden="true">
+  <defs>
+    <linearGradient id="fastBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7dd3fc"/>
+      <stop offset="100%" style="stop-color:#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="fastNavy" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+  <!-- Arrows with space between them, aligned above F A S T -->
+  <g transform="translate(23 6)">
+    <polygon points="0,6 14,22 0,38" fill="url(#fastBlue)"/>
+  </g>
+  <g transform="translate(73 6)">
+    <polygon points="0,6 14,22 0,38" fill="url(#fastBlue)"/>
+  </g>
+  <g transform="translate(123 6)">
+    <polygon points="0,6 14,22 0,38" fill="url(#fastNavy)"/>
+  </g>
+  <g transform="translate(173 6)">
+    <polygon points="0,6 14,22 0,38" fill="url(#fastNavy)"/>
+  </g>
+  <!-- F A S T (no periods), with clear space below arrows -->
+  <text x="30" y="76" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="22" fill="#7dd3fc">F</text>
+  <text x="80" y="76" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="22" fill="#7dd3fc">A</text>
+  <text x="130" y="76" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="22" fill="#38bdf8">S</text>
+  <text x="180" y="76" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="22" fill="#38bdf8">T</text>
+</svg>

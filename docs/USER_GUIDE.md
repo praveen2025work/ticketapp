@@ -1,5 +1,5 @@
 # FAST – User Guide  
-**Fast Acceleration Support Team – Problem Management System**
+**Finance – Accelerated Support Team – Problem Management System**
 
 This guide explains how to use the FAST application so you can work without asking for help. Keep it handy and share it with your team.
 
@@ -97,7 +97,7 @@ Use the Dashboard to see how many problems are open, how fast they’re being re
 
 - **Search:** Use the search box to find tickets by text (e.g. title, description).
 - **Filters:** You can filter by:
-  - **Region** (e.g. USDS, UM, JPL, CHN)
+  - **Region** (e.g. APAC, EMEA, AMER)
   - **Classification** (A, R, P)
   - **Application** (affected application)
   - **Date range** (from / to)
@@ -116,7 +116,7 @@ Only **RTB_TEAM**, **SERVICE_DESK**, and **ADMIN** can create tickets.
 2. Fill in the form:
    - **Title** (required)
    - **Description**
-   - **Regional code** (e.g. USDS, UM, JPL, CHN)
+   - **Regional code** (e.g. APAC, EMEA, AMER)
    - **Target resolution hours**
    - **Priority** (if used)
    - **Assigned to**, **Assignment group**

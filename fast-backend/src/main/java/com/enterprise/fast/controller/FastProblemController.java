@@ -74,7 +74,7 @@ public class FastProblemController {
     @Operation(summary = "Update a problem ticket")
     public ResponseEntity<FastProblemResponse> update(
             @PathVariable Long id,
-            @RequestBody UpdateFastProblemRequest request,
+            @Valid @RequestBody UpdateFastProblemRequest request,
             Authentication authentication) {
         return ResponseEntity.ok(problemService.update(id, request, authentication.getName()));
     }
@@ -138,14 +138,15 @@ public class FastProblemController {
     }
 
     @PostMapping("/{id}/links")
-    @Operation(summary = "Add a link (label + URL)")
+    @Operation(summary = "Add a link (label + URL; optional linkType: JIRA, SERVICEFIRST, OTHER)")
     public ResponseEntity<FastProblemResponse> addLink(
             @PathVariable Long id,
             @RequestBody java.util.Map<String, String> body,
             Authentication authentication) {
         String label = body.get("label");
         String url = body.get("url");
-        return ResponseEntity.ok(problemService.addLink(id, label != null ? label : "", url != null ? url : ""));
+        String linkType = body.get("linkType");
+        return ResponseEntity.ok(problemService.addLink(id, label != null ? label : "", url != null ? url : "", linkType));
     }
 
     @DeleteMapping("/{id}/links/{linkId}")

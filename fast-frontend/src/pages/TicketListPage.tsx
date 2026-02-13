@@ -7,12 +7,14 @@ import axiosClient from '../shared/api/axiosClient';
 import { problemApi } from '../shared/api/problemApi';
 import { applicationsApi } from '../shared/api/applicationsApi';
 import { getApiErrorMessage } from '../shared/utils/apiError';
+import { getDefaultTicketDateRange } from '../shared/utils/dateUtils';
 import type { FastProblem, PagedResponse, Classification, RegionalCode } from '../shared/types';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../shared/context/AuthContext';
 import TicketTable from '../components/TicketTable';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
+import ApiErrorState from '../components/ApiErrorState';
 
 const SORT_BY = 'createdDate' as const;
 const SORT_DIRECTION = 'desc' as const;
@@ -25,8 +27,8 @@ export default function TicketListPage() {
   const [regionFilter, setRegionFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [applicationFilter, setApplicationFilter] = useState<string>('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(() => getDefaultTicketDateRange().fromDate);
+  const [toDate, setToDate] = useState(() => getDefaultTicketDateRange().toDate);
   const [groupBy, setGroupBy] = useState<'none' | 'application'>('none');
 
   const debouncedSearch = useDebounce(search, 400);
@@ -54,7 +56,7 @@ export default function TicketListPage() {
     filterParams.toDate
   );
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['problems', page, filterParams.q, filterParams.region, filterParams.classification, filterParams.application, filterParams.fromDate, filterParams.toDate],
     queryFn: (): Promise<PagedResponse<FastProblem>> =>
       hasFilters
@@ -64,15 +66,30 @@ export default function TicketListPage() {
   });
 
   const clearFilters = () => {
+    const range = getDefaultTicketDateRange();
     setSearch('');
     setRegionFilter('');
     setClassFilter('');
     setApplicationFilter('');
-    setFromDate('');
-    setToDate('');
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
     setGroupBy('none');
     setPage(0);
   };
+
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Problem Tickets</h1>
+        <ApiErrorState
+          title="Failed to load tickets"
+          error={error}
+          onRetry={() => refetch()}
+          className="text-center py-8 px-4"
+        />
+      </div>
+    );
+  }
 
   const handleExport = async () => {
     try {

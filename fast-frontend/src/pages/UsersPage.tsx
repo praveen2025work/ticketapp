@@ -3,10 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../shared/context/AuthContext';
 import { usersApi, type RegisterPayload, type UserResponse } from '../shared/api/usersApi';
 import { applicationsApi } from '../shared/api/applicationsApi';
-import { getApiErrorMessage } from '../shared/utils/apiError';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ApiErrorState from '../components/ApiErrorState';
 
-const ROLES = ['ADMIN', 'REVIEWER', 'APPROVER', 'RTB_OWNER', 'TECH_LEAD', 'READ_ONLY'];
+const ROLES = ['ADMIN', 'REVIEWER', 'APPROVER', 'RTB_OWNER', 'TECH_LEAD', 'PROJECT_MANAGER', 'READ_ONLY'];
 const REGIONS = ['APAC', 'EMEA', 'AMER'];
 
 export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; readOnly?: boolean } = {}) {
@@ -57,13 +57,12 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
   if (isLoading && !isRefetching) return <LoadingSpinner message="Loading users..." />;
   if (error) {
     return (
-      <div className="text-center py-8 px-4">
-        <p className="text-red-500 mb-2">Failed to load users</p>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-3">{getApiErrorMessage(error, 'Check backend is running and database is initialized.')}</p>
-        <button type="button" onClick={() => refetch()} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover">
-          Retry
-        </button>
-      </div>
+      <ApiErrorState
+        title="Failed to load users"
+        error={error}
+        onRetry={() => refetch()}
+        fallbackMessage="Check backend is running and database is initialized."
+      />
     );
   }
 
@@ -93,7 +92,10 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
             className="grid grid-cols-1 gap-4 sm:grid-cols-2"
             onSubmit={(e) => {
               e.preventDefault();
-              registerMutation.mutate(form);
+              registerMutation.mutate({
+                ...form,
+                username: form.username.trim().toLowerCase(),
+              });
             }}
           >
             <div>

@@ -5,12 +5,14 @@ import { problemApi } from '../shared/api/problemApi';
 import { applicationsApi } from '../shared/api/applicationsApi';
 import type { DashboardMetrics } from '../shared/types';
 import type { FastProblem, PagedResponse, RegionalCode } from '../shared/types';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../shared/context/AuthContext';
 import MetricsCards from '../components/MetricsCards';
 import type { StatusFilter } from '../components/MetricsCards';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DashboardCharts from '../components/DashboardCharts';
 import TicketTable from '../components/TicketTable';
+import ApiErrorState from '../components/ApiErrorState';
 
 const REGIONS: RegionalCode[] = ['APAC', 'EMEA', 'AMER'];
 
@@ -19,14 +21,16 @@ export default function DashboardPage() {
   const [selectedFilter, setSelectedFilter] = useState<StatusFilter>(null);
   const [applicationFilter, setApplicationFilter] = useState('');
   const [regionFilter, setRegionFilter] = useState('');
+  const [periodFilter, setPeriodFilter] = useState<'overall' | 'weekly' | 'monthly'>('overall');
   const isReadOnly = user?.role === 'READ_ONLY';
 
   const metricsFilter = {
     ...(applicationFilter && { application: applicationFilter }),
     ...(regionFilter && { region: regionFilter }),
+    ...(periodFilter !== 'overall' && { period: periodFilter }),
   };
-  const { data: metrics, isLoading, error } = useQuery<DashboardMetrics>({
-    queryKey: ['dashboard', 'metrics', applicationFilter, regionFilter],
+  const { data: metrics, isLoading, error, refetch } = useQuery<DashboardMetrics>({
+    queryKey: ['dashboard', 'metrics', applicationFilter, regionFilter, periodFilter],
     queryFn: () => dashboardApi.getMetrics(
       Object.keys(metricsFilter).length > 0 ? metricsFilter : undefined
     ),
@@ -56,8 +60,33 @@ export default function DashboardPage() {
     enabled: !!selectedFilter,
   });
 
+  const { data: inProgressWithoutComment = [] } = useQuery<FastProblem[]>({
+    queryKey: ['dashboard', 'in-progress-without-comment'],
+    queryFn: () => dashboardApi.getInProgressWithoutRecentComment(),
+  });
+
+  const { data: top10 = [] } = useQuery<FastProblem[]>({
+    queryKey: ['dashboard', 'top10', regionFilter],
+    queryFn: () => dashboardApi.getTop10(regionFilter || undefined),
+  });
+
+  const { data: backlog = [] } = useQuery<FastProblem[]>({
+    queryKey: ['dashboard', 'backlog', regionFilter],
+    queryFn: () => dashboardApi.getBacklog(regionFilter || undefined),
+  });
+
   if (isLoading) return <LoadingSpinner message="Loading dashboard..." />;
-  if (error || !metrics) return <div className="text-center py-12 text-rose-500">Failed to load metrics</div>;
+  if (error || !metrics) {
+    return (
+      <ApiErrorState
+        title="Failed to load dashboard"
+        error={error}
+        onRetry={() => refetch()}
+        fallbackMessage="Failed to load metrics. Check that the backend is running."
+        className="text-center py-12 px-4"
+      />
+    );
+  }
 
   const sectionTitle =
     selectedFilter === 'OPEN'
@@ -77,6 +106,17 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Executive Dashboard</h1>
         <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1 hidden sm:inline">View</span>
+          <select
+            value={periodFilter}
+            onChange={(e) => setPeriodFilter(e.target.value as 'overall' | 'weekly' | 'monthly')}
+            className="h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all min-w-[120px]"
+            aria-label="Period"
+          >
+            <option value="overall">Overall</option>
+            <option value="weekly">Weekly (7d)</option>
+            <option value="monthly">Monthly (30d)</option>
+          </select>
           <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1 hidden sm:inline">Tickets</span>
           <select
             value={applicationFilter}
@@ -113,6 +153,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {periodFilter !== 'overall' && (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Showing metrics for the last {periodFilter === 'weekly' ? '7' : '30'} days.
+        </p>
+      )}
+
       <div className="animate-slide-up">
         <MetricsCards
           metrics={metrics}
@@ -122,6 +168,58 @@ export default function DashboardPage() {
       </div>
 
       <DashboardCharts metrics={metrics} />
+
+      {top10.length > 0 && (
+        <div className="animate-slide-up">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Top 10 Finance Daily Production</h2>
+          <div className="bg-white dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-600 overflow-hidden">
+            <TicketTable tickets={top10} />
+          </div>
+        </div>
+      )}
+
+      {backlog.length > 0 && (
+        <div className="animate-slide-up">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">Backlog (bi-weekly review)</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Tickets not yet In Progress (NEW, ASSIGNED).</p>
+          <div className="bg-white dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-600 overflow-hidden">
+            <TicketTable tickets={backlog} />
+          </div>
+        </div>
+      )}
+
+      {inProgressWithoutComment.length > 0 && (
+        <div className="animate-slide-up bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-700 p-6">
+          <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
+            In Progress without daily commentary ({inProgressWithoutComment.length})
+          </h2>
+          <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+            Daily commentary required. Add a comment to each ticket below.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-amber-200 dark:border-amber-700">
+                  <th className="text-left py-2 font-medium">FAST ID</th>
+                  <th className="text-left py-2 font-medium">Title</th>
+                  <th className="text-left py-2 font-medium">Assignee</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inProgressWithoutComment.map((t) => (
+                  <tr key={t.id} className="border-b border-amber-100 dark:border-amber-800/50">
+                    <td className="py-2">
+                      <Link to={`/tickets/${t.id}`} className="text-primary hover:underline font-medium">FAST-{t.id}</Link>
+                    </td>
+                    <td className="py-2 text-slate-700 dark:text-slate-300 truncate max-w-xs">{t.title}</td>
+                    <td className="py-2 text-slate-600 dark:text-slate-400">{t.assignedTo || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {showTicketsSection && (
         <div className="animate-slide-up">

@@ -39,6 +39,8 @@ public class CreateFastProblemRequest {
 
     private List<Long> applicationIds;
 
+    /** Benefits justification – required for generating FAST ID (Finance Chennai PC & FC). */
+    @NotBlank(message = "Benefits justification is required for FAST ID")
     private String anticipatedBenefits;
 
     @NotEmpty(message = "At least one region is required")

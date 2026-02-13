@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS fast_problem (
     anticipated_benefits CLOB,
     classification VARCHAR(10) DEFAULT 'A',
     ticket_age_days INTEGER DEFAULT 0,
+    rag_status VARCHAR(5) DEFAULT 'G',
     status_indicator VARCHAR(10) DEFAULT 'R16',
     status VARCHAR(30) DEFAULT 'NEW',
     priority_score DOUBLE DEFAULT 0.0,
@@ -75,6 +76,7 @@ CREATE TABLE IF NOT EXISTS fast_problem (
 );
 CREATE INDEX IF NOT EXISTS idx_fast_problem_status ON fast_problem(status);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_classification ON fast_problem(classification);
+CREATE INDEX IF NOT EXISTS idx_fast_problem_rag_status ON fast_problem(rag_status);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_pbt_id ON fast_problem(pbt_id);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_inc_number ON fast_problem(servicenow_incident_number);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_prb_number ON fast_problem(servicenow_problem_number);
@@ -83,6 +85,9 @@ CREATE INDEX IF NOT EXISTS idx_fast_problem_deleted ON fast_problem(deleted);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_deleted_created ON fast_problem(deleted, created_date);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_affected_app ON fast_problem(affected_application);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_request_number ON fast_problem(request_number);
+CREATE INDEX IF NOT EXISTS idx_fast_problem_resolved_date ON fast_problem(resolved_date);
+CREATE INDEX IF NOT EXISTS idx_fast_problem_updated_date ON fast_problem(updated_date);
+CREATE INDEX IF NOT EXISTS idx_fast_problem_assigned_to ON fast_problem(assigned_to);
 
 -- FAST_PROBLEM_APPLICATION (ticket can impact one-to-many applications)
 CREATE TABLE IF NOT EXISTS fast_problem_application (
@@ -185,6 +190,7 @@ CREATE TABLE IF NOT EXISTS fast_problem_link (
     fast_problem_id BIGINT NOT NULL,
     label VARCHAR(100) NOT NULL,
     url VARCHAR(2000) NOT NULL,
+    link_type VARCHAR(20) DEFAULT 'OTHER',
     CONSTRAINT fk_fpl_problem FOREIGN KEY (fast_problem_id) REFERENCES fast_problem(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_fast_problem_link_problem_id ON fast_problem_link(fast_problem_id);
@@ -218,7 +224,8 @@ INSERT INTO users (username, brid, email, full_name, role, region, active) VALUE
 ('vivek', 'BR004', 'vivek@enterprise.com', 'Vivek', 'APPROVER', 'AMER', true),
 ('kostas', 'BR005', 'kostas@enterprise.com', 'Kostas', 'RTB_OWNER', 'AMER', true),
 ('prav', 'BR006', 'prav@enterprise.com', 'Prav', 'TECH_LEAD', 'AMER', true),
-('rick', 'BR007', 'rick@enterprise.com', 'Rick', 'READ_ONLY', 'AMER', true);
+('rick', 'BR007', 'rick@enterprise.com', 'Rick', 'READ_ONLY', 'AMER', true),
+('pm', 'BR008', 'pm@enterprise.com', 'Project Manager', 'PROJECT_MANAGER', 'AMER', true);
 
 -- Seed applications (local)
 INSERT INTO applications (name, code, description) VALUES

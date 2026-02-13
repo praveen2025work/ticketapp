@@ -10,4 +10,6 @@ import java.util.List;
 public interface FastProblemLinkRepository extends JpaRepository<FastProblemLink, Long> {
 
     List<FastProblemLink> findByFastProblemIdOrderById(Long fastProblemId);
+
+    List<FastProblemLink> findByFastProblem_IdInOrderByFastProblemIdAscIdAsc(List<Long> fastProblemIds);
 }

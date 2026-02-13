@@ -97,8 +97,8 @@ export const problemApi = {
     await axiosClient.delete(`/problems/${id}/properties/${encodeURIComponent(key)}`);
   },
 
-  addLink: async (id: number, label: string, url: string): Promise<FastProblem> => {
-    const response = await axiosClient.post(`/problems/${id}/links`, { label, url });
+  addLink: async (id: number, label: string, url: string, linkType?: string): Promise<FastProblem> => {
+    const response = await axiosClient.post(`/problems/${id}/links`, { label, url, ...(linkType ? { linkType } : {}) });
     return response.data;
   },
 

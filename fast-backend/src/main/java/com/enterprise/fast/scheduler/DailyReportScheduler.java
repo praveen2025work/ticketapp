@@ -3,6 +3,7 @@ package com.enterprise.fast.scheduler;
 import com.enterprise.fast.domain.enums.RegionalCode;
 import com.enterprise.fast.dto.response.FastProblemResponse;
 import com.enterprise.fast.service.AppSettingsService;
+import com.enterprise.fast.service.DailyReportTemplateService;
 import com.enterprise.fast.service.EmailService;
 import com.enterprise.fast.service.FastProblemService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class DailyReportScheduler {
     private final AppSettingsService appSettingsService;
     private final FastProblemService problemService;
     private final EmailService emailService;
+    private final DailyReportTemplateService dailyReportTemplateService;
 
     /**
      * Run every hour at minute 0. For each zone (APAC, EMEA, AMER), if enabled and current time matches zone's send time, send report.
@@ -61,31 +63,12 @@ public class DailyReportScheduler {
         List<FastProblemResponse> openTickets = problemService.exportWithFilters(
                 null, zone.name(), null, null, null, null, "OPEN", 500);
         String subject = "FAST Daily Report – " + zone.name() + " – " + java.time.LocalDate.now();
-        StringBuilder html = new StringBuilder();
-        html.append("<h2>FAST Daily Report – ").append(zone.name()).append("</h2>");
-        html.append("<p>Open tickets: ").append(openTickets.size()).append("</p>");
-        html.append("<table border='1' cellpadding='4' cellspacing='0'><tr><th>ID</th><th>Title</th><th>Status</th><th>Assignee</th><th>Priority</th></tr>");
-        for (FastProblemResponse t : openTickets) {
-            html.append("<tr>")
-                    .append("<td>").append(t.getId()).append("</td>")
-                    .append("<td>").append(escape(t.getTitle())).append("</td>")
-                    .append("<td>").append(t.getStatus() != null ? t.getStatus() : "").append("</td>")
-                    .append("<td>").append(t.getAssignedTo() != null ? escape(t.getAssignedTo()) : "").append("</td>")
-                    .append("<td>").append(t.getPriority() != null ? t.getPriority() : "").append("</td>")
-                    .append("</tr>");
-        }
-        html.append("</table>");
-        String body = html.toString();
+        String body = dailyReportTemplateService.buildHtml(zone.name(), java.time.LocalDate.now().toString(), openTickets);
         for (String to : toEmails) {
             if (to != null && !to.isBlank()) {
                 emailService.sendEmail(to.trim(), subject, body);
             }
         }
         log.info("Sent daily report for {} to {} recipients ({} tickets)", zone, toEmails.length, openTickets.size());
-    }
-
-    private static String escape(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 }

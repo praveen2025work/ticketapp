@@ -14,11 +14,18 @@ const CreateIcon = () => (
   </svg>
 );
 
+const DashboardIcon = () => (
+  <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25A2.25 2.25 0 0 1 6 10.5H3.75A2.25 2.25 0 0 1 3.75 8.25V6zM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 6 20.25H3.75A2.25 2.25 0 0 1 3.75 18v-2.25zM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25A2.25 2.25 0 0 1 13.5 8.25V6zM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25z" />
+  </svg>
+);
+
 const navItems = [
-  { path: '/dashboard', label: 'Dashboard' },
+  { path: '/dashboard', label: 'Dashboard', icon: 'dashboard', iconOnly: true },
   { path: '/tickets', label: 'Tickets' },
   { path: '/tickets/create', label: 'Ticket', icon: 'create' },
   { path: '/approvals', label: 'Approvals' },
+  { path: '/upstream', label: 'Upstream' },
   { path: '/knowledge', label: 'KB' },
   { path: '/admin', label: 'Admin' },
 ];
@@ -32,7 +39,7 @@ const RefreshIcon = () => (
 export default function Layout() {
   const { user, showRoleSwitcher } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { enabled: autoRefreshEnabled, setEnabled: setAutoRefreshEnabled, secondsRemaining, updatesAvailable, dismissUpdates, refreshNow } = useAutoRefresh();
+  const { enabled: autoRefreshEnabled, setEnabled: setAutoRefreshEnabled, secondsRemaining } = useAutoRefresh();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -52,8 +59,8 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-4">
-              <Link to="/dashboard" className="text-xl font-bold tracking-tight text-white">
-                FAST
+              <Link to="/dashboard" className="flex items-center gap-2 text-white hover:opacity-90 transition-opacity">
+                <img src="/fastlogo.svg" alt="F.A.S.T. - Finance Accelerated Support Team" className="h-11 w-auto brightness-110 contrast-105" width="140" height="56" />
               </Link>
               <button
                 type="button"
@@ -79,11 +86,13 @@ export default function Layout() {
                       location.pathname === item.path
                         ? 'bg-primary text-white'
                         : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }`}
-                    title={item.icon === 'create' ? 'Create Ticket' : undefined}
+                    } ${'iconOnly' in item && item.iconOnly ? 'p-2' : ''}`}
+                    title={'iconOnly' in item && item.iconOnly ? item.label : item.icon === 'create' ? 'Create Ticket' : undefined}
+                    aria-label={'iconOnly' in item && item.iconOnly ? item.label : undefined}
                   >
+                    {item.icon === 'dashboard' && <DashboardIcon />}
                     {'icon' in item && item.icon === 'create' && <CreateIcon />}
-                    {item.label}
+                    {!('iconOnly' in item && item.iconOnly) && item.label}
                     {item.path === '/approvals' && approvalCount > 0 && (
                       <span className="ml-1 min-w-[1.25rem] inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold rounded-full bg-amber-500 text-slate-900" aria-label={`${approvalCount} pending approval${approvalCount !== 1 ? 's' : ''}`}>
                         {approvalCount}
@@ -172,10 +181,12 @@ export default function Layout() {
                     className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium ${
                       location.pathname === item.path ? 'bg-primary text-white' : 'text-slate-300 hover:bg-slate-800'
                     }`}
-                    title={'icon' in item && item.icon === 'create' ? 'Create Ticket' : undefined}
+                    title={'iconOnly' in item && item.iconOnly ? item.label : item.icon === 'create' ? 'Create Ticket' : undefined}
+                    aria-label={'iconOnly' in item && item.iconOnly ? item.label : undefined}
                   >
+                    {item.icon === 'dashboard' && <DashboardIcon />}
                     {'icon' in item && item.icon === 'create' && <CreateIcon />}
-                    {item.label}
+                    {!('iconOnly' in item && item.iconOnly) && item.label}
                     {item.path === '/approvals' && approvalCount > 0 && (
                       <span className="ml-1 min-w-[1.25rem] inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold rounded-full bg-amber-500 text-slate-900" aria-label={`${approvalCount} pending approval${approvalCount !== 1 ? 's' : ''}`}>
                         {approvalCount}
@@ -188,31 +199,6 @@ export default function Layout() {
           )}
         </div>
       </nav>
-      {updatesAvailable && (
-        <div className="bg-emerald-50 dark:bg-emerald-900/30 border-b border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200">
-          <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium">
-              New updates available. Review the page below for new or changed items.
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => refreshNow()}
-                className="text-sm font-medium px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
-              >
-                Refresh now
-              </button>
-              <button
-                type="button"
-                onClick={dismissUpdates}
-                className="text-sm font-medium px-3 py-1.5 rounded-lg bg-emerald-200 dark:bg-emerald-800/50 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-300 dark:hover:bg-emerald-800 transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <main className="max-w-7xl mx-auto px-4 py-6 text-gray-900 dark:text-slate-100">
         <Outlet />
       </main>

@@ -19,7 +19,11 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
+        String username = request.getUsername() != null ? request.getUsername().trim().toLowerCase() : "";
+        if (username.isEmpty()) {
+            throw new IllegalArgumentException("Username is required");
+        }
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
             throw new IllegalArgumentException("Username already exists");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -27,7 +31,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = User.builder()
-                .username(request.getUsername())
+                .username(username)
                 .email(request.getEmail())
                 .fullName(request.getFullName())
                 .role(UserRole.valueOf(request.getRole()))

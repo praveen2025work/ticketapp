@@ -13,6 +13,7 @@ import {
 import type { DashboardMetrics } from '../shared/types';
 
 const CLASS_COLORS = ['#10b981', '#f59e0b', '#ef4444'];
+const RAG_COLORS = ['#22c55e', '#f59e0b', '#ef4444']; // G, A, R
 const REGION_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 interface DashboardChartsProps {
@@ -26,6 +27,14 @@ export default function DashboardCharts({ metrics }: DashboardChartsProps) {
   }));
 
   const regionData = Object.entries(metrics.ticketsByRegion).map(([name, value]) => ({ name, value }));
+
+  const ragData = metrics.ticketsByRag
+    ? Object.entries(metrics.ticketsByRag).map(([name, value]) => ({
+        name: name === 'G' ? 'Green (≤15d)' : name === 'A' ? 'Amber (15–20d)' : 'Red (>20d)',
+        shortName: name === 'G' ? 'Green' : name === 'A' ? 'Amber' : 'Red',
+        value,
+      }))
+    : [];
 
   const statusData = Object.entries(metrics.ticketsByStatus)
     .filter(([, v]) => v > 0)
@@ -62,6 +71,36 @@ export default function DashboardCharts({ metrics }: DashboardChartsProps) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {ragData.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 animate-slide-up stagger-1">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">RAG Status (Escalation)</h2>
+          <div className="h-64 min-h-[200px] min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={ragData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ shortName, percent, value }) =>
+                    value > 0 ? `${shortName} ${((percent ?? 0) * 100).toFixed(0)}%` : ''
+                  }
+                  labelLine={{ strokeWidth: 1 }}
+                >
+                  {ragData.map((_, idx) => (
+                    <Cell key={idx} fill={RAG_COLORS[idx % RAG_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => [v ?? 0, 'Tickets']} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 animate-slide-up stagger-1">
         <h2 className="text-lg font-semibold text-slate-800 mb-4">Regional Distribution</h2>

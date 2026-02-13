@@ -19,6 +19,7 @@ public class DashboardMetricsResponse {
     private Double averageResolutionTimeHours;
     private Double slaCompliancePercentage;
     private Map<String, Long> ticketsByClassification;
+    private Map<String, Long> ticketsByRag;
     private Map<String, Long> ticketsByRegion;
     private Map<String, Long> ticketsByStatus;
     private Map<String, Double> avgResolutionByRegion;

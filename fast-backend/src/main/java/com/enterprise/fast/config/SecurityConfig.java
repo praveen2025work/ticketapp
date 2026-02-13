@@ -23,10 +23,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-
     private final BamAuthenticationFilter bamAuthenticationFilter;
-
     private final CorsConfigurationSource corsConfigurationSource;
+    private final JsonAuthenticationEntryPoint jsonAuthenticationEntryPoint;
+    private final JsonAccessDeniedHandler jsonAccessDeniedHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -35,6 +35,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jsonAuthenticationEntryPoint)
+                        .accessDeniedHandler(jsonAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints (no auth needed)
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
@@ -72,6 +75,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/register").hasRole("ADMIN")
                         .requestMatchers("/api/v1/audit/recent").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/settings").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/settings/daily-report-preview").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/settings").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/tech-leads").hasAnyRole("ADMIN", "RTB_OWNER")

@@ -3,21 +3,22 @@ import { useAuth } from '../shared/context/AuthContext';
 
 const ROLES = [
   { role: 'ADMIN', desc: 'Full access: create/clone tickets, submit for approval, edit, delete, close tickets, register users, settings, Audit Log.' },
-  { role: 'REVIEWER', desc: 'Business Review Owner. Approve or reject tickets (is it a FAST issue?). View all.' },
-  { role: 'APPROVER', desc: 'IT Review Owner. Approve or reject tickets (IT approval). View all.' },
-  { role: 'RTB_OWNER', desc: 'RTB Lead. Approve/reject, assign tickets, edit tickets, move status, update KB articles.' },
+  { role: 'REVIEWER', desc: 'Business Review Owner. Approve or reject tickets (is it a FAST issue?). Can only approve tickets linked to their applications.' },
+  { role: 'APPROVER', desc: 'IT Review Owner. Approve or reject tickets (IT approval). Can only approve tickets linked to their applications.' },
+  { role: 'RTB_OWNER', desc: 'RTB Lead. Approve/reject, assign tickets, edit tickets, move status, update KB articles. Can only approve tickets linked to their applications.' },
   { role: 'TECH_LEAD', desc: 'BTB Lead. Owns technical fix, edits tickets, moves status, update KB articles.' },
+  { role: 'PROJECT_MANAGER', desc: 'Tracks upstream items (JIRA, ServiceFirst links). Edit tickets, move status.' },
   { role: 'READ_ONLY', desc: 'Read-only access: view Dashboard, Tickets, and Knowledge Base. No clicks or actions except Export data (CSV).' },
 ];
 
 const QUICK_REF = [
   { want: 'See overview of tickets and metrics', where: 'Dashboard', who: 'All' },
-  { want: 'See all tickets, search and filter', where: 'Tickets', who: 'All' },
+  { want: 'See all tickets, search and filter (default: 10 biz days)', where: 'Tickets', who: 'All' },
   { want: 'Create a new problem', where: 'Create Ticket', who: 'ADMIN' },
   { want: 'Clone an existing ticket', where: 'Ticket detail → Clone ticket', who: 'ADMIN' },
-  { want: 'Work on a ticket (edit, move status)', where: 'Ticket detail → Edit / Move to…', who: 'ADMIN, RTB_OWNER, TECH_LEAD' },
+  { want: 'Work on a ticket (edit, move status)', where: 'Ticket detail → Edit / Move to…', who: 'ADMIN, RTB_OWNER, TECH_LEAD, PROJECT_MANAGER' },
   { want: 'Submit a ticket for approval', where: 'Ticket detail → Submit for Approval', who: 'ADMIN' },
-  { want: 'Approve or reject a ticket', where: 'Approvals', who: 'REVIEWER, APPROVER, RTB_OWNER, ADMIN' },
+  { want: 'Approve or reject a ticket', where: 'Approvals', who: 'REVIEWER, APPROVER, RTB_OWNER, ADMIN (must be linked to ticket apps)' },
   { want: 'Find past solutions', where: 'Knowledge Base', who: 'All' },
   { want: 'Update a Knowledge Base article', where: 'Knowledge Base → expand article (edit if supported)', who: 'ADMIN, RTB_OWNER, TECH_LEAD' },
   { want: 'See who did what', where: 'Audit Log', who: 'ADMIN only' },
@@ -35,7 +36,7 @@ export default function StarterGuidePage() {
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Starter Guide</h1>
         <p className="text-slate-600 mt-1">
-          Fast Acceleration Support Team – how to use the app without asking for help.
+          Finance – Accelerated Support Team – how to use the app without asking for help.
         </p>
       </div>
 
@@ -91,9 +92,12 @@ export default function StarterGuidePage() {
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Ticket lifecycle</h2>
         <p className="text-slate-700 mb-3">
-          Admin creates a ticket (NEW) → Submits for approval → Reviewer, Approver, and RTB Owner (anyone with each role can approve that slot) → All three must approve → ASSIGNED →
+          Admin creates a ticket (NEW) → Submits for approval → Reviewer, Approver, and RTB Owner approve (each role must approve) → All three must approve → ASSIGNED →
           RTB Owner assigns to Admin or Tech Lead → Tech Lead/Admin works on fix (IN_PROGRESS → ROOT_CAUSE → FIX_IN_PROGRESS → RESOLVED) →
           Admin closes (CLOSED). When a ticket is Resolved, a Knowledge Base article is auto-created. If any Reviewer, Approver, or RTB Owner rejects, the ticket moves to REJECTED. Admin can also Close or Reject a ticket from NEW or ASSIGNED.
+        </p>
+        <p className="text-slate-600 text-sm mb-3">
+          <strong>Approval restriction:</strong> Only users linked to the ticket&apos;s Impacted applications (Admin → Users → Applications) can approve or reject that ticket. Admin can approve any ticket.
         </p>
         <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-600">
           <span className="px-2 py-1 bg-slate-100 rounded">NEW</span>
@@ -113,6 +117,15 @@ export default function StarterGuidePage() {
       </section>
 
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Dashboard & Tickets</h2>
+        <ul className="list-disc list-inside space-y-1 text-slate-700 mb-4">
+          <li><strong>Dashboard filters:</strong> Filter by Application (matches Impacted applications on tickets), Region (APAC, EMEA, AMER), and period (Overall, Weekly, Monthly).</li>
+          <li><strong>Tickets screen:</strong> Default date range is the last 10 business days. Clear filters resets to that range.</li>
+          <li><strong>RAG Status (Escalation):</strong> Green (≤15 days), Amber (15–20 days), Red (&gt;20 days). Updated daily for open tickets.</li>
+        </ul>
+      </section>
+
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Knowledge Base</h2>
         <p className="text-slate-700">
           Knowledge Base articles are created automatically when a problem ticket is moved to <strong>Resolved</strong>. They contain
@@ -128,7 +141,8 @@ export default function StarterGuidePage() {
         </p>
         <ul className="list-disc list-inside space-y-1 text-slate-700">
           <li><strong>Settings</strong> – configure application settings.</li>
-          <li><strong>Users</strong> – register new users and manage user application access.</li>
+          <li><strong>Users</strong> – register new users and link them to applications. User–application mapping controls which approval tickets each user can approve.</li>
+          <li><strong>Applications</strong> – manage Impacted applications used on tickets.</li>
         </ul>
       </section>
 

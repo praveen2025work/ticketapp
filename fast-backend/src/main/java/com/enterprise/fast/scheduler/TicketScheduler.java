@@ -2,6 +2,7 @@ package com.enterprise.fast.scheduler;
 
 import com.enterprise.fast.domain.entity.FastProblem;
 import com.enterprise.fast.domain.enums.Classification;
+import com.enterprise.fast.domain.enums.RagStatus;
 import com.enterprise.fast.domain.enums.TicketStatus;
 import com.enterprise.fast.repository.FastProblemRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,37 @@ public class TicketScheduler {
     }
 
     /**
+     * Daily at 2:05 AM - Set RAG status for open tickets: G = age ≤15, A = 15<age≤20, R = >20
+     */
+    @Scheduled(cron = "0 5 2 * * *")
+    @Transactional
+    public void updateRagStatus() {
+        log.info("Starting daily RAG status update...");
+
+        List<FastProblem> openTickets = problemRepository.findByStatusNotInAndDeletedFalse(CLOSED_STATUSES);
+        int updated = 0;
+
+        for (FastProblem ticket : openTickets) {
+            int age = ticket.getTicketAgeDays() != null ? ticket.getTicketAgeDays() : 0;
+            RagStatus newRag;
+            if (age > 20) {
+                newRag = RagStatus.R;
+            } else if (age > 15) {
+                newRag = RagStatus.A;
+            } else {
+                newRag = RagStatus.G;
+            }
+            if (ticket.getRagStatus() != newRag) {
+                ticket.setRagStatus(newRag);
+                updated++;
+            }
+        }
+
+        problemRepository.saveAll(openTickets);
+        log.info("Updated RAG status for {} tickets", updated);
+    }
+
+    /**
      * Daily at 2:15 AM - Apply A/R/P classification based on ticket age
      */
     @Scheduled(cron = "0 15 2 * * *")
@@ -80,7 +112,7 @@ public class TicketScheduler {
     }
 
     /**
-     * Daily at 8:00 AM - Log escalation alerts for R and P classified tickets
+     * Daily at 8:00 AM - Log escalation alerts for RAG Amber and Red (and legacy Classification R/P)
      */
     @Scheduled(cron = "0 0 8 * * *")
     @Transactional(readOnly = true)
@@ -89,22 +121,22 @@ public class TicketScheduler {
 
         List<FastProblem> openTickets = problemRepository.findByStatusNotInAndDeletedFalse(CLOSED_STATUSES);
 
-        long reviewCount = openTickets.stream()
-                .filter(t -> t.getClassification() == Classification.R)
+        long ragAmberCount = openTickets.stream()
+                .filter(t -> t.getRagStatus() == RagStatus.A)
                 .count();
 
-        long priorityCount = openTickets.stream()
-                .filter(t -> t.getClassification() == Classification.P)
+        long ragRedCount = openTickets.stream()
+                .filter(t -> t.getRagStatus() == RagStatus.R)
                 .count();
 
-        if (reviewCount > 0) {
-            log.warn("ESCALATION: {} tickets in REVIEW (R) classification requiring attention", reviewCount);
+        if (ragAmberCount > 0) {
+            log.warn("ESCALATION: {} tickets in RAG AMBER (>15 days) requiring attention", ragAmberCount);
         }
 
-        if (priorityCount > 0) {
-            log.error("ESCALATION: {} tickets in PRIORITY (P) classification requiring IMMEDIATE attention", priorityCount);
+        if (ragRedCount > 0) {
+            log.error("ESCALATION: {} tickets in RAG RED (>20 days) requiring IMMEDIATE attention", ragRedCount);
         }
 
-        log.info("Escalation check complete. Review: {}, Priority: {}", reviewCount, priorityCount);
+        log.info("Escalation check complete. RAG Amber: {}, RAG Red: {}", ragAmberCount, ragRedCount);
     }
 }

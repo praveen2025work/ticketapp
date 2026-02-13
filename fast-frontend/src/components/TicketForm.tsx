@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { applicationsApi } from '../shared/api/applicationsApi';
 import { usersApi } from '../shared/api/usersApi';
+import { getApiErrorMessage } from '../shared/utils/apiError';
+import SearchableSelect from './SearchableSelect';
 import type { CreateFastProblemRequest, UpdateFastProblemRequest, RegionalCode, TicketStatus } from '../shared/types';
 
 interface TicketFormProps {
@@ -78,8 +80,15 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
         return { ...base, pbtId: formData.pbtId || undefined, confluenceLink: formData.confluenceLink?.trim() || undefined, regionalCodes: formData.regionalCodes } as CreateFastProblemRequest;
     };
 
+    const [benefitsError, setBenefitsError] = useState<string | null>(null);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (mode === 'create' && !formData.anticipatedBenefits?.trim()) {
+            setBenefitsError('Benefits justification is required to generate a FAST ID.');
+            return;
+        }
+        setBenefitsError(null);
         onSubmit(buildSubmitData());
     };
 
@@ -92,9 +101,10 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
     });
 
     const showBtbTechLead = mode === 'edit' && ticketStatus && ASSIGNED_OR_LATER.includes(ticketStatus);
+    const applicationIdsForTechLeads = formData.applicationIds?.length ? formData.applicationIds : undefined;
     const { data: techLeads = [] } = useQuery({
-        queryKey: ['users', 'tech-leads'],
-        queryFn: () => usersApi.listTechLeads(),
+        queryKey: ['users', 'tech-leads', applicationIdsForTechLeads ?? []],
+        queryFn: () => usersApi.listTechLeads(applicationIdsForTechLeads),
         enabled: showBtbTechLead,
     });
 
@@ -309,6 +319,7 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
                         {applicationsError && (
                             <div className="flex flex-col gap-1">
                                 <span className="text-sm text-amber-600 dark:text-amber-400">Could not load application list.</span>
+                                <span className="text-xs text-gray-500 dark:text-slate-400">{getApiErrorMessage(applicationsError, 'Request failed')}</span>
                                 <button type="button" onClick={() => refetchApplications()} className="text-sm text-primary hover:underline text-left">
                                     Retry loading applications
                                 </button>
@@ -353,37 +364,46 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
                 {/* BTB Tech Lead (edit only, once ticket is ASSIGNED or later) */}
                 {showBtbTechLead && (
                     <div className="sm:col-span-3">
-                        <label htmlFor="btbTechLeadUsername" className="block text-sm font-medium text-gray-700 dark:text-slate-300">BTB Tech Lead</label>
-                        <div className="mt-1">
-                            <select
-                                name="btbTechLeadUsername"
-                                id="btbTechLeadUsername"
-                                value={formData.btbTechLeadUsername ?? ''}
-                                onChange={handleChange}
-                                className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 dark:border-slate-500 rounded-md p-2 border bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                            >
-                                <option value="">— None —</option>
-                                {techLeads.map((u) => (
-                                    <option key={u.id} value={u.username}>{u.fullName} ({u.username})</option>
-                                ))}
-                            </select>
-                        </div>
+                        <SearchableSelect
+                            label="BTB Tech Lead"
+                            id="btbTechLeadUsername"
+                            value={formData.btbTechLeadUsername ?? ''}
+                            onChange={(v) => setFormData((prev) => ({ ...prev, btbTechLeadUsername: v }))}
+                            options={techLeads.map((u) => ({
+                                value: u.username,
+                                label: u.fullName ?? u.username,
+                                subLabel: u.username,
+                            }))}
+                            placeholder="Search by name or username..."
+                            emptyMessage="No tech leads match"
+                            className="w-full"
+                        />
                         <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">Reference assignee once all approvals are done</p>
                     </div>
                 )}
 
-                {/* Benefits */}
+                {/* Benefits form – required for FAST ID (Finance Chennai PC & FC) */}
                 <div className="sm:col-span-6">
-                    <label htmlFor="anticipatedBenefits" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Anticipated Benefits</label>
+                    <label htmlFor="anticipatedBenefits" className="block text-sm font-medium text-gray-700 dark:text-slate-300">
+                        Benefits justification <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Required to generate a FAST ID. Describe impact on P&amp;L timeliness, daily efficiency or controls, and rank/priority as applicable.
+                    </p>
                     <div className="mt-1">
                         <textarea
                             id="anticipatedBenefits"
                             name="anticipatedBenefits"
-                            rows={2}
+                            rows={3}
                             value={formData.anticipatedBenefits}
-                            onChange={handleChange}
-                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 rounded-md p-2"
+                            onChange={(e) => { handleChange(e); setBenefitsError(null); }}
+                            required={mode === 'create'}
+                            className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border rounded-md p-2 ${
+                                benefitsError ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-slate-500'
+                            }`}
+                            placeholder="e.g. Delays P&L close by 2 days; high impact on controls; rank 1."
                         />
+                        {benefitsError && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{benefitsError}</p>}
                     </div>
                 </div>
 

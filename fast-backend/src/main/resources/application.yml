@@ -7,6 +7,9 @@ spring:
   profiles:
     # local = H2 (default for local dev); dev / prod = Oracle (org environments)
     active: local
+  mvc:
+    # Return 404 as JSON for unknown API paths (handled by GlobalExceptionHandler)
+    throw-exception-if-no-handler-found: true
   jpa:
     open-in-view: false
     hibernate:
@@ -52,3 +55,18 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: method
+
+# Logging: file created automatically, rotated and archived by size and time
+logging:
+  file:
+    name: ${LOG_FILE:logs/application.log}
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      file-name-pattern: logs/archive/application-%d{yyyy-MM-dd}.%i.log.gz
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 500MB
+      clean-history-on-start: false

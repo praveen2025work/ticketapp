@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
+@ActiveProfiles("local")
 @Disabled("Full context fails in CI due to BamAuthenticationFilter; run manually with full stack")
 class FastProblemControllerIntegrationTest {
 

@@ -1,10 +1,12 @@
 // Enums
 export type Classification = 'A' | 'R' | 'P';
+/** RAG escalation: G = ≤15 days, A = 15–20 days, R = >20 days */
+export type RagStatus = 'G' | 'A' | 'R';
 export type RegionalCode = 'APAC' | 'EMEA' | 'AMER';
 export type StatusIndicator = 'R16' | 'B16';
 export type TicketStatus = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'ROOT_CAUSE_IDENTIFIED' | 'FIX_IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED';
 export type ApprovalDecision = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type UserRole = 'ADMIN' | 'REVIEWER' | 'APPROVER' | 'RTB_OWNER' | 'TECH_LEAD' | 'READ_ONLY';
+export type UserRole = 'ADMIN' | 'REVIEWER' | 'APPROVER' | 'RTB_OWNER' | 'TECH_LEAD' | 'PROJECT_MANAGER' | 'READ_ONLY';
 
 export interface ApplicationRef {
   id: number;
@@ -31,6 +33,7 @@ export interface FastProblem {
   classification: Classification;
   regionalCodes: RegionalCode[];
   ticketAgeDays: number;
+  ragStatus?: RagStatus | null;
   statusIndicator: StatusIndicator;
   status: TicketStatus;
   priorityScore?: number;
@@ -68,6 +71,7 @@ export interface TicketLink {
   id: number;
   label: string;
   url: string;
+  linkType?: string | null;
 }
 
 export interface TicketProperty {
@@ -120,6 +124,7 @@ export interface DashboardMetrics {
   averageResolutionTimeHours: number | null;
   slaCompliancePercentage: number | null;
   ticketsByClassification: Record<string, number>;
+  ticketsByRag?: Record<string, number>;
   ticketsByRegion: Record<string, number>;
   ticketsByStatus: Record<string, number>;
   avgResolutionByRegion: Record<string, number>;
@@ -216,4 +221,15 @@ export interface AuthResponse {
   fullName: string;
   role: string;
   region?: string;
+}
+
+/** Standard error body from backend (401, 403, 404, 500, validation). Use for issue identification. */
+export interface ApiErrorResponse {
+  timestamp: string;
+  status: number;
+  error: string;
+  message: string;
+  code?: string;
+  path?: string;
+  details?: Record<string, string>;
 }

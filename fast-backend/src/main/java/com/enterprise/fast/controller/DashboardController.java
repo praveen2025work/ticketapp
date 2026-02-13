@@ -1,6 +1,7 @@
 package com.enterprise.fast.controller;
 
 import com.enterprise.fast.dto.response.DashboardMetricsResponse;
+import com.enterprise.fast.dto.response.FastProblemResponse;
 import com.enterprise.fast.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,11 +25,39 @@ public class DashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/metrics")
-    @Operation(summary = "Get overall dashboard metrics (optionally filtered by region and application)")
+    @Operation(summary = "Get overall dashboard metrics (optionally filtered by region, application, period=weekly|monthly)")
     public ResponseEntity<DashboardMetricsResponse> getMetrics(
             @RequestParam(required = false) String region,
-            @RequestParam(required = false) String application) {
-        return ResponseEntity.ok(dashboardService.getOverallMetrics(region, application));
+            @RequestParam(required = false) String application,
+            @RequestParam(required = false) String period) {
+        return ResponseEntity.ok(dashboardService.getOverallMetrics(region, application, period));
+    }
+
+    @GetMapping("/in-progress-without-daily-comment")
+    @Operation(summary = "In Progress tickets with no comment in the last 24 hours (daily commentary required)")
+    public ResponseEntity<List<FastProblemResponse>> getInProgressWithoutRecentComment() {
+        return ResponseEntity.ok(dashboardService.getInProgressWithoutRecentComment());
+    }
+
+    @GetMapping("/top10")
+    @Operation(summary = "Top 10 Finance Daily Production issues by impact (optional region filter)")
+    public ResponseEntity<List<FastProblemResponse>> getTop10(
+            @RequestParam(required = false) String region) {
+        return ResponseEntity.ok(dashboardService.getTop10(region));
+    }
+
+    @GetMapping("/backlog")
+    @Operation(summary = "Backlog items (NEW, ASSIGNED) for bi-weekly review; optional region filter")
+    public ResponseEntity<List<FastProblemResponse>> getBacklog(
+            @RequestParam(required = false) String region) {
+        return ResponseEntity.ok(dashboardService.getBacklog(region));
+    }
+
+    @GetMapping("/upstream")
+    @Operation(summary = "Upstream items: tickets with JIRA or ServiceFirst links; optional linkType filter (JIRA, SERVICEFIRST)")
+    public ResponseEntity<List<FastProblemResponse>> getUpstream(
+            @RequestParam(required = false) String linkType) {
+        return ResponseEntity.ok(dashboardService.getUpstream(linkType));
     }
 
     @GetMapping("/metrics/region")

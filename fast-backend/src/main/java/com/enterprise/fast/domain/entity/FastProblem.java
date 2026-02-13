@@ -72,6 +72,12 @@ public class FastProblem {
     @Builder.Default
     private Integer ticketAgeDays = 0;
 
+    /** RAG escalation: G (≤15d), A (15–20d), R (>20d). Updated daily by scheduler for open tickets. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rag_status", length = 5)
+    @Builder.Default
+    private RagStatus ragStatus = RagStatus.G;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status_indicator", length = 10)
     @Builder.Default

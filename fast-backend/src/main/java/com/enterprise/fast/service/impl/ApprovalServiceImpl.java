@@ -1,5 +1,6 @@
 package com.enterprise.fast.service.impl;
 
+import com.enterprise.fast.domain.entity.Application;
 import com.enterprise.fast.domain.entity.ApprovalRecord;
 import com.enterprise.fast.domain.entity.FastProblem;
 import com.enterprise.fast.domain.entity.User;
@@ -16,12 +17,14 @@ import com.enterprise.fast.repository.UserRepository;
 import com.enterprise.fast.service.ApprovalService;
 import com.enterprise.fast.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -72,11 +75,17 @@ public class ApprovalServiceImpl implements ApprovalService {
             throw new IllegalArgumentException("This approval has already been decided");
         }
 
+        User user = userRepository.findByUsernameWithApplicationsIgnoreCase(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        if (!userCanApproveTicket(user, record.getFastProblem())) {
+            throw new AccessDeniedException("You are not associated with any application linked to this ticket");
+        }
+
         record.setDecision(ApprovalDecision.APPROVED);
         record.setComments(request.getComments());
         record.setDecisionDate(LocalDateTime.now());
         record.setReviewerName(username);
-        record.setReviewerEmail(userRepository.findByUsername(username).map(User::getEmail).orElse(null));
+        record.setReviewerEmail(userRepository.findByUsernameIgnoreCase(username).map(User::getEmail).orElse(null));
 
         ApprovalRecord saved = approvalRepository.save(record);
 
@@ -107,11 +116,17 @@ public class ApprovalServiceImpl implements ApprovalService {
             throw new IllegalArgumentException("This approval has already been decided");
         }
 
+        User user = userRepository.findByUsernameWithApplicationsIgnoreCase(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        if (!userCanApproveTicket(user, record.getFastProblem())) {
+            throw new AccessDeniedException("You are not associated with any application linked to this ticket");
+        }
+
         record.setDecision(ApprovalDecision.REJECTED);
         record.setComments(request.getComments());
         record.setDecisionDate(LocalDateTime.now());
         record.setReviewerName(username);
-        record.setReviewerEmail(userRepository.findByUsername(username).map(User::getEmail).orElse(null));
+        record.setReviewerEmail(userRepository.findByUsernameIgnoreCase(username).map(User::getEmail).orElse(null));
 
         ApprovalRecord saved = approvalRepository.save(record);
 
@@ -131,7 +146,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     @Override
     @Transactional(readOnly = true)
     public List<ApprovalResponse> getPendingApprovals(String username) {
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameWithApplicationsIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         List<ApprovalRecord> pending;
         if (user.getRole() == UserRole.ADMIN) {
@@ -141,7 +156,32 @@ public class ApprovalServiceImpl implements ApprovalService {
         } else {
             pending = List.of();
         }
-        return pending.stream().map(mapper::toApprovalResponse).collect(Collectors.toList());
+        // Filter to only approvals for tickets where user is associated with at least one application
+        return pending.stream()
+                .filter(r -> userCanApproveTicket(user, r.getFastProblem()))
+                .map(mapper::toApprovalResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns true if the user can perform approval on the ticket.
+     * ADMIN can approve any ticket. Otherwise, user must be associated with at least one
+     * application linked to the ticket (via user_application mapping).
+     */
+    private boolean userCanApproveTicket(User user, FastProblem problem) {
+        if (user.getRole() == UserRole.ADMIN) {
+            return true;
+        }
+        List<Application> ticketApps = problem.getApplications();
+        if (ticketApps == null || ticketApps.isEmpty()) {
+            return true; // no applications on ticket — allow
+        }
+        List<Application> userApps = user.getApplications();
+        if (userApps == null || userApps.isEmpty()) {
+            return false;
+        }
+        Set<Long> ticketAppIds = ticketApps.stream().map(Application::getId).collect(Collectors.toSet());
+        return userApps.stream().anyMatch(a -> a.getId() != null && ticketAppIds.contains(a.getId()));
     }
 
     @Override

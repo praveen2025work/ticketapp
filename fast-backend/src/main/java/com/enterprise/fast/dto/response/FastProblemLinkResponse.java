@@ -14,4 +14,5 @@ public class FastProblemLinkResponse {
     private Long id;
     private String label;
     private String url;
+    private String linkType;
 }

@@ -30,11 +30,11 @@ class DashboardControllerTest {
                 .totalOpenTickets(10L)
                 .slaCompliancePercentage(95.0)
                 .build();
-        when(dashboardService.getOverallMetrics(null, null)).thenReturn(metrics);
-        ResponseEntity<DashboardMetricsResponse> res = controller.getMetrics(null, null);
+        when(dashboardService.getOverallMetrics(null, null, null)).thenReturn(metrics);
+        ResponseEntity<DashboardMetricsResponse> res = controller.getMetrics(null, null, null);
         assertThat(res.getStatusCode().value()).isEqualTo(200);
         assertThat(res.getBody().getTotalOpenTickets()).isEqualTo(10L);
-        verify(dashboardService).getOverallMetrics(null, null);
+        verify(dashboardService).getOverallMetrics(null, null, null);
     }
 
     @Test

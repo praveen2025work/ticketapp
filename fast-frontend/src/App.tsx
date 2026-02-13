@@ -10,6 +10,7 @@ import CreateTicketPage from './pages/CreateTicketPage';
 import TicketDetailPage from './pages/TicketDetailPage';
 import EditTicketPage from './pages/EditTicketPage';
 import ApprovalQueuePage from './pages/ApprovalQueuePage';
+import UpstreamPage from './pages/UpstreamPage';
 import KnowledgeBasePage from './pages/KnowledgeBasePage';
 import AdminPage from './pages/AdminPage';
 import StarterGuidePage from './pages/StarterGuidePage';
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="tickets/:id" element={<TicketDetailPage />} />
         <Route path="tickets/:id/edit" element={<EditTicketPage />} />
         <Route path="approvals" element={<ApprovalQueuePage />} />
+        <Route path="upstream" element={<UpstreamPage />} />
         <Route path="knowledge" element={<KnowledgeBasePage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="audit" element={<Navigate to="/admin?tab=audit" replace />} />

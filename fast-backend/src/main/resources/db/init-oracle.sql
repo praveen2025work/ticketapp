@@ -59,6 +59,7 @@ CREATE TABLE fast_problem (
     anticipated_benefits        CLOB,
     classification              VARCHAR2(10) DEFAULT 'A',
     ticket_age_days             NUMBER(10) DEFAULT 0,
+    rag_status                  VARCHAR2(5) DEFAULT 'G',
     status_indicator            VARCHAR2(10) DEFAULT 'R16',
     status                      VARCHAR2(30) DEFAULT 'NEW',
     priority_score              BINARY_DOUBLE DEFAULT 0.0,
@@ -81,6 +82,7 @@ CREATE TABLE fast_problem (
 );
 CREATE INDEX idx_fast_problem_status ON fast_problem(status);
 CREATE INDEX idx_fast_problem_classification ON fast_problem(classification);
+CREATE INDEX idx_fast_problem_rag_status ON fast_problem(rag_status);
 CREATE INDEX idx_fast_problem_pbt_id ON fast_problem(pbt_id);
 CREATE INDEX idx_fast_problem_inc_number ON fast_problem(servicenow_incident_number);
 CREATE INDEX idx_fast_problem_prb_number ON fast_problem(servicenow_problem_number);
@@ -89,6 +91,9 @@ CREATE INDEX idx_fast_problem_deleted ON fast_problem(deleted);
 CREATE INDEX idx_fast_problem_deleted_created ON fast_problem(deleted, created_date);
 CREATE INDEX idx_fast_problem_affected_app ON fast_problem(affected_application);
 CREATE INDEX idx_fast_problem_request_number ON fast_problem(request_number);
+CREATE INDEX idx_fast_problem_resolved_date ON fast_problem(resolved_date);
+CREATE INDEX idx_fast_problem_updated_date ON fast_problem(updated_date);
+CREATE INDEX idx_fast_problem_assigned_to ON fast_problem(assigned_to);
 
 -- FAST_PROBLEM_APPLICATION (ticket impacts one-to-many applications)
 CREATE TABLE fast_problem_application (
@@ -192,6 +197,7 @@ CREATE TABLE fast_problem_link (
     fast_problem_id NUMBER(19) NOT NULL,
     label           VARCHAR2(100) NOT NULL,
     url             VARCHAR2(2000) NOT NULL,
+    link_type       VARCHAR2(20) DEFAULT 'OTHER',
     CONSTRAINT fk_fpl_problem FOREIGN KEY (fast_problem_id) REFERENCES fast_problem(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_fast_problem_link_problem_id ON fast_problem_link(fast_problem_id);

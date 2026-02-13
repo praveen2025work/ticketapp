@@ -73,11 +73,11 @@ class UserControllerTest {
     @Test
     void listUsers_ReturnsPaginated() {
         Page<User> page = new PageImpl<>(List.of(user(1L, "user1")), PageRequest.of(0, 20), 1);
-        when(userRepository.findAll(any(PageRequest.class))).thenReturn(page);
+        when(userRepository.findAllWithApplications(any(PageRequest.class))).thenReturn(page);
         ResponseEntity<?> res = controller.listUsers(0, 20);
         assertThat(res.getStatusCode().value()).isEqualTo(200);
         assertThat(res.getBody()).isNotNull();
-        verify(userRepository).findAll(any(PageRequest.class));
+        verify(userRepository).findAllWithApplications(any(PageRequest.class));
     }
 
     @Test
@@ -85,20 +85,20 @@ class UserControllerTest {
         User u = user(1L, "testuser");
         u.setFullName("DB User");
         u.setRegion("EMEA");
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(u));
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(u));
         ResponseEntity<?> res = controller.getCurrentUser();
         assertThat(res.getStatusCode().value()).isEqualTo(200);
         assertThat(res.getBody()).hasFieldOrPropertyWithValue("username", "testuser");
-        verify(userRepository).findByUsername("testuser");
+        verify(userRepository).findByUsernameIgnoreCase("testuser");
     }
 
     @Test
     void getCurrentUser_WhenUserNotInDb_ReturnsMinimalFromAuth() {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.empty());
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.empty());
         ResponseEntity<?> res = controller.getCurrentUser();
         assertThat(res.getStatusCode().value()).isEqualTo(200);
         assertThat(res.getBody()).hasFieldOrPropertyWithValue("username", "testuser");
-        verify(userRepository).findByUsername("testuser");
+        verify(userRepository).findByUsernameIgnoreCase("testuser");
     }
 
     @Test

@@ -1,4 +1,6 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
+import { getApiErrorMessage } from '../utils/apiError';
 
 const TOKEN_KEY = 'fast_jwt_token';
 
@@ -43,11 +45,16 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && getStoredToken()) {
-      setStoredToken(null);
-      window.location.reload();
-    } else if (error.response?.status === 403) {
-      console.error('Authorization error:', error.response?.data);
+    const status = error.response?.status;
+    const message = getApiErrorMessage(error, 'Request failed');
+    if (status === 401) {
+      if (getStoredToken()) {
+        toast.error(message || 'Session expired. Please sign in again.');
+        setStoredToken(null);
+        window.location.reload();
+      }
+    } else if (status === 403) {
+      toast.error(message || 'You do not have permission for this action.');
     }
     return Promise.reject(error);
   }

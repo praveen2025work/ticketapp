@@ -4,6 +4,7 @@ import { problemApi } from '../shared/api/problemApi';
 import type { UpdateFastProblemRequest, RegionalCode } from '../shared/types';
 import TicketForm from '../components/TicketForm';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ApiErrorState from '../components/ApiErrorState';
 import { useAuth } from '../shared/context/AuthContext';
 
 const ROLES_CAN_EDIT = ['ADMIN', 'RTB_OWNER', 'TECH_LEAD'];
@@ -14,7 +15,7 @@ export default function EditTicketPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: ticket, isLoading, error } = useQuery({
+  const { data: ticket, isLoading, error, refetch } = useQuery({
     queryKey: ['problems', id],
     queryFn: () => problemApi.getById(Number(id!)),
     enabled: !!id,
@@ -34,7 +35,16 @@ export default function EditTicketPage() {
     return <Navigate to={`/tickets/${id}`} replace />;
   }
   if (isLoading || !ticket) return <LoadingSpinner message="Loading ticket..." />;
-  if (error) return <div className="text-center py-8 text-red-500">Failed to load ticket</div>;
+  if (error) {
+    return (
+      <ApiErrorState
+        title="Failed to load ticket"
+        error={error}
+        onRetry={() => refetch()}
+        className="text-center py-8 px-4"
+      />
+    );
+  }
 
   const initialData = {
     title: ticket.title,

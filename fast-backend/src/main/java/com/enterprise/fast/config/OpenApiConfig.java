@@ -18,7 +18,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("FAST Problem Ticket System API")
                         .version("1.0.0")
-                        .description("Fast Acceleration Support Team - Enterprise Problem Management System")
+                        .description("Finance – Accelerated Support Team - Enterprise Problem Management System")
                         .contact(new Contact()
                                 .name("FAST Team")
                                 .email("fast-support@enterprise.com")))

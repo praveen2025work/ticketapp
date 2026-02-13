@@ -1,5 +1,6 @@
 package com.enterprise.fast.domain.entity;
 
+import com.enterprise.fast.domain.enums.ExternalLinkType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,4 +26,9 @@ public class FastProblemLink {
 
     @Column(nullable = false, length = 2000)
     private String url;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "link_type", length = 20)
+    @Builder.Default
+    private ExternalLinkType linkType = ExternalLinkType.OTHER;
 }

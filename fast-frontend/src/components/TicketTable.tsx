@@ -1,13 +1,22 @@
-import type { FastProblem } from '../shared/types';
+import type { FastProblem, TicketLink } from '../shared/types';
 import ClassificationBadge from './ClassificationBadge';
+import RagBadge from './RagBadge';
 import { Link } from 'react-router-dom';
 
 const AGING_THRESHOLD_DAYS = 20;
 const RESOLVED_STATUSES = ['RESOLVED', 'CLOSED'];
+const UPSTREAM_LINK_TYPES = ['JIRA', 'SERVICEFIRST'];
 
 function formatPriority(p: number | null | undefined): string {
   if (p == null || p < 1 || p > 5) return '-';
   return String(p);
+}
+
+function upstreamLinks(ticket: FastProblem): TicketLink[] {
+  if (!ticket.links?.length) return [];
+  return ticket.links.filter(
+    (l) => l.linkType && UPSTREAM_LINK_TYPES.includes(l.linkType.toUpperCase())
+  );
 }
 
 export type GroupByOption = 'none' | 'application';
@@ -16,9 +25,11 @@ interface TicketTableProps {
   tickets: FastProblem[];
   isLoading?: boolean;
   groupBy?: GroupByOption;
+  /** When true, show a column with JIRA / ServiceFirst ticket links. */
+  showUpstreamLinks?: boolean;
 }
 
-function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
+function TicketTableInner({ tickets, showUpstreamLinks }: { tickets: FastProblem[]; showUpstreamLinks?: boolean }) {
   const statusColors: Record<string, string> = {
     NEW: 'bg-sky-100 text-sky-800',
     ASSIGNED: 'bg-violet-100 text-violet-800',
@@ -38,19 +49,21 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
     <div className="overflow-x-auto w-full min-w-0">
       <table className="w-full table-fixed divide-y divide-slate-200 dark:divide-slate-600">
         <colgroup>
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '26%' }} />
+          <col style={{ width: showUpstreamLinks ? '8%' : '10%' }} />
+          <col style={{ width: showUpstreamLinks ? '16%' : '20%' }} />
+          <col style={{ width: showUpstreamLinks ? '8%' : '10%' }} />
+          <col style={{ width: '9%' }} />
           <col style={{ width: '12%' }} />
-          <col style={{ width: '8%' }} />
-          <col style={{ width: '16%' }} />
-          <col style={{ width: '6%' }} />
-          <col style={{ width: '8%' }} />
           <col style={{ width: '14%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '13%' }} />
+          {showUpstreamLinks && <col style={{ width: '18%' }} />}
         </colgroup>
         <thead className="bg-slate-50/80 dark:bg-slate-800/80">
           <tr>
             <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-              ID / INC
+              FAST ID / INC
             </th>
             <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Title
@@ -58,10 +71,13 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
             <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Region
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-[7.5rem] min-w-[7.5rem]">
               Class
             </th>
-            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-[9rem] min-w-[9rem]">
+              RAG
+            </th>
+            <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-[7rem] min-w-[7rem]">
               Status
             </th>
             <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
@@ -73,6 +89,11 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
             <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
               Priority
             </th>
+            {showUpstreamLinks && (
+              <th scope="col" className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                JIRA / ServiceFirst
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-slate-800/50 divide-y divide-slate-100 dark:divide-slate-600">
@@ -99,7 +120,7 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
                     )}
                     <div>
                       <div className="text-sm font-semibold text-primary group-hover:underline">
-                        #{ticket.id}
+                        FAST-{ticket.id}
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">{ticket.servicenowIncidentNumber || '-'}</div>
                     </div>
@@ -116,14 +137,23 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
                     {ticket.regionalCodes?.length ? ticket.regionalCodes.join(', ') : '—'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <ClassificationBadge classification={ticket.classification || 'A'} />
+                <td className="px-4 py-4 whitespace-nowrap align-middle overflow-hidden min-w-[7.5rem]" style={{ minWidth: '7.5rem' }}>
+                  <span className="inline-block max-w-full">
+                    <ClassificationBadge classification={ticket.classification || 'A'} />
+                  </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-lg ${statusColors[ticket.status] || 'bg-slate-100 text-slate-700'}`}
-                  >
-                    {ticket.status.replace(/_/g, ' ')}
+                <td className="px-4 py-4 whitespace-nowrap align-middle overflow-hidden min-w-[9rem]" style={{ minWidth: '9rem' }}>
+                  <span className="inline-block max-w-full">
+                    <RagBadge ragStatus={ticket.ragStatus ?? undefined} />
+                  </span>
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap align-middle overflow-hidden min-w-[7rem]" style={{ minWidth: '7rem' }}>
+                  <span className="inline-block max-w-full">
+                    <span
+                      className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-lg ${statusColors[ticket.status] || 'bg-slate-100 text-slate-700'}`}
+                    >
+                      {ticket.status.replace(/_/g, ' ')}
+                    </span>
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -140,6 +170,28 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 text-center font-medium">
                   {formatPriority(ticket.priority)}
                 </td>
+                {showUpstreamLinks && (
+                  <td className="px-6 py-4 min-w-0">
+                    <div className="flex flex-col gap-1">
+                      {upstreamLinks(ticket).length === 0 ? (
+                        <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                      ) : (
+                        upstreamLinks(ticket).map((link) => (
+                          <a
+                            key={link.id}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline truncate max-w-full inline-block"
+                            title={link.url}
+                          >
+                            {link.label || link.linkType || 'Link'}
+                          </a>
+                        ))
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -149,7 +201,7 @@ function TicketTableInner({ tickets }: { tickets: FastProblem[] }) {
   );
 }
 
-export default function TicketTable({ tickets, isLoading, groupBy = 'none' }: TicketTableProps) {
+export default function TicketTable({ tickets, isLoading, groupBy = 'none', showUpstreamLinks = false }: TicketTableProps) {
   if (isLoading) {
     return <div className="text-center py-8 text-slate-500 dark:text-slate-400">Loading...</div>;
   }
@@ -174,12 +226,12 @@ export default function TicketTable({ tickets, isLoading, groupBy = 'none' }: Ti
             <h3 className="px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-600">
               {app} <span className="text-slate-500 dark:text-slate-400 font-normal">({grouped[app].length} ticket{grouped[app].length !== 1 ? 's' : ''})</span>
             </h3>
-            <TicketTableInner tickets={grouped[app]} />
+            <TicketTableInner tickets={grouped[app]} showUpstreamLinks={showUpstreamLinks} />
           </div>
         ))}
       </div>
     );
   }
 
-  return <TicketTableInner tickets={tickets} />;
+  return <TicketTableInner tickets={tickets} showUpstreamLinks={showUpstreamLinks} />;
 }

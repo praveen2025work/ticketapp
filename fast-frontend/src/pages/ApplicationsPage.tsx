@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../shared/context/AuthContext';
 import { applicationsApi, type ApplicationResponse, type ApplicationRequest } from '../shared/api/applicationsApi';
-import { getApiErrorMessage } from '../shared/utils/apiError';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ApiErrorState from '../components/ApiErrorState';
 
 export default function ApplicationsPage({ embedded, readOnly }: { embedded?: boolean; readOnly?: boolean } = {}) {
   const { user } = useAuth();
@@ -65,13 +65,12 @@ export default function ApplicationsPage({ embedded, readOnly }: { embedded?: bo
   if (isLoading && !isRefetching) return <LoadingSpinner message="Loading applications..." />;
   if (error) {
     return (
-      <div className="text-center py-8 px-4">
-        <p className="text-red-500 mb-2">Failed to load applications</p>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-3">{getApiErrorMessage(error, 'Check backend is running and database is initialized.')}</p>
-        <button type="button" onClick={() => refetch()} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover">
-          Retry
-        </button>
-      </div>
+      <ApiErrorState
+        title="Failed to load applications"
+        error={error}
+        onRetry={() => refetch()}
+        fallbackMessage="Check backend is running and database is initialized."
+      />
     );
   }
 

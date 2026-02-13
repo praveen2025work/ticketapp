@@ -70,6 +70,7 @@ public class FastProblemMapper {
                 .classification(entity.getClassification() != null ? entity.getClassification().name() : null)
                 .regionalCodes(regionCodesFromEntity(entity))
                 .ticketAgeDays(entity.getTicketAgeDays())
+                .ragStatus(entity.getRagStatus() != null ? entity.getRagStatus().name() : null)
                 .statusIndicator(entity.getStatusIndicator() != null ? entity.getStatusIndicator().name() : null)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .priorityScore(entity.getPriorityScore())
@@ -94,7 +95,7 @@ public class FastProblemMapper {
                         entity.getIncidentLinks().stream().map(this::toIncidentLinkResponse).collect(Collectors.toList()) :
                         Collections.emptyList())
                 .links(entity.getLinks() != null ?
-                        entity.getLinks().stream().map(this::toProblemLinkResponse).collect(Collectors.toList()) :
+                        entity.getLinks().stream().filter(java.util.Objects::nonNull).map(this::toProblemLinkResponse).filter(java.util.Objects::nonNull).collect(Collectors.toList()) :
                         Collections.emptyList())
                 .properties(entity.getProperties() != null ?
                         entity.getProperties().stream().map(this::toPropertyResponse).collect(Collectors.toList()) :
@@ -120,6 +121,7 @@ public class FastProblemMapper {
                 .classification(entity.getClassification() != null ? entity.getClassification().name() : null)
                 .regionalCodes(regionCodesFromEntity(entity))
                 .ticketAgeDays(entity.getTicketAgeDays())
+                .ragStatus(entity.getRagStatus() != null ? entity.getRagStatus().name() : null)
                 .statusIndicator(entity.getStatusIndicator() != null ? entity.getStatusIndicator().name() : null)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .priorityScore(entity.getPriorityScore())
@@ -131,12 +133,16 @@ public class FastProblemMapper {
                 .confluenceLink(entity.getConfluenceLink())
                 .createdDate(entity.getCreatedDate())
                 .updatedDate(entity.getUpdatedDate())
+                .links(entity.getLinks() != null ?
+                        entity.getLinks().stream().filter(java.util.Objects::nonNull).map(this::toProblemLinkResponse).filter(java.util.Objects::nonNull).collect(Collectors.toList()) :
+                        Collections.emptyList())
                 .build();
     }
 
     private List<String> regionCodesFromEntity(FastProblem entity) {
         if (entity.getRegions() == null || entity.getRegions().isEmpty()) return Collections.emptyList();
         return entity.getRegions().stream()
+                .filter(r -> r != null && r.getRegionalCode() != null)
                 .map(r -> r.getRegionalCode().name())
                 .collect(Collectors.toList());
     }
@@ -201,10 +207,12 @@ public class FastProblemMapper {
     }
 
     public FastProblemLinkResponse toProblemLinkResponse(FastProblemLink link) {
+        if (link == null) return null;
         return FastProblemLinkResponse.builder()
                 .id(link.getId())
                 .label(link.getLabel())
                 .url(link.getUrl())
+                .linkType(link.getLinkType() != null ? link.getLinkType().name() : null)
                 .build();
     }
 
