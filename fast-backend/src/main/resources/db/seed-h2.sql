@@ -312,3 +312,6 @@ INSERT INTO fast_problem_region (fast_problem_id, regional_code) VALUES
 -- RAG status based on ticket_age_days: G ≤15, A 15–20, R >20 (for demo/testing varied chart data)
 UPDATE fast_problem SET rag_status = 'A' WHERE ticket_age_days > 15 AND ticket_age_days <= 20 AND deleted = false;
 UPDATE fast_problem SET rag_status = 'R' WHERE ticket_age_days > 20 AND deleted = false;
+
+-- Archived status: set some CLOSED tickets to ARCHIVED for demo (status + archived flag)
+UPDATE fast_problem SET status = 'ARCHIVED', archived = true, closed_date = COALESCE(closed_date, DATEADD('DAY', -10, CURRENT_TIMESTAMP)) WHERE id IN (7, 14, 21, 28, 35, 42, 49, 56) AND deleted = false;

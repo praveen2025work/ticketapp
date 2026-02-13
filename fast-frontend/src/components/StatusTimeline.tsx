@@ -1,7 +1,7 @@
 import type { TicketStatus } from '../shared/types';
 
 const statusFlow: TicketStatus[] = [
-  'NEW', 'ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED'
+  'NEW', 'ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'
 ];
 
 const statusLabels: Record<string, string> = {
@@ -13,6 +13,7 @@ const statusLabels: Record<string, string> = {
   RESOLVED: 'Resolved',
   CLOSED: 'Closed',
   REJECTED: 'Rejected',
+  ARCHIVED: 'Archived',
 };
 
 export default function StatusTimeline({ currentStatus }: { currentStatus: TicketStatus }) {
@@ -21,6 +22,15 @@ export default function StatusTimeline({ currentStatus }: { currentStatus: Ticke
       <div className="flex items-center gap-2">
         <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
           Rejected
+        </span>
+      </div>
+    );
+  }
+  if (currentStatus === 'ARCHIVED') {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+          Archived
         </span>
       </div>
     );

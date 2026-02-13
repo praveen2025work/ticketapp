@@ -8,5 +8,6 @@ public enum TicketStatus {
     FIX_IN_PROGRESS,
     RESOLVED,
     CLOSED,
-    REJECTED
+    REJECTED,
+    ARCHIVED
 }

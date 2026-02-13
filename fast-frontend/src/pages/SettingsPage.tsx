@@ -32,18 +32,22 @@ export default function SettingsPage({ embedded, readOnly }: { embedded?: boolea
   const [previewIframeSrc, setPreviewIframeSrc] = useState<string | null>(null);
   useEffect(() => {
     if (!showReportPreview || !previewData?.html || typeof previewData.html !== 'string' || previewData.html.trim() === '') {
-      setPreviewIframeSrc((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
+      queueMicrotask(() =>
+        setPreviewIframeSrc((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return null;
+        })
+      );
       return;
     }
     const blob = new Blob([previewData.html], { type: 'text/html; charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    setPreviewIframeSrc((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
+    queueMicrotask(() =>
+      setPreviewIframeSrc((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      })
+    );
   }, [showReportPreview, previewData?.html]);
 
   useEffect(() => {

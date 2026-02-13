@@ -9,7 +9,7 @@ const esc = (s: string) =>
 
 const nl2br = (s: string) => esc(s).replace(/\n/g, '<br>\n');
 
-const statusFlow = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+const statusFlow = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'];
 const statusLabels: Record<string, string> = {
   NEW: 'New',
   ASSIGNED: 'Assigned',
@@ -19,6 +19,7 @@ const statusLabels: Record<string, string> = {
   RESOLVED: 'Resolved',
   CLOSED: 'Closed',
   REJECTED: 'Rejected',
+  ARCHIVED: 'Archived',
 };
 
 function formatRole(role?: string) {

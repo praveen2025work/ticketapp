@@ -2,6 +2,7 @@ package com.enterprise.fast.service;
 
 import com.enterprise.fast.dto.response.DashboardMetricsResponse;
 import com.enterprise.fast.dto.response.FastProblemResponse;
+import com.enterprise.fast.dto.response.PagedResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -30,7 +31,7 @@ public interface DashboardService {
     List<FastProblemResponse> getTop10(String region);
 
     /** Backlog: open tickets not yet In Progress (NEW, ASSIGNED). */
-    List<FastProblemResponse> getBacklog(String region);
+    PagedResponse<FastProblemResponse> getBacklog(String region, int page, int size);
 
     /** Upstream items: tickets with at least one JIRA or ServiceFirst link. Optional filter by linkType (JIRA, SERVICEFIRST). */
     List<FastProblemResponse> getUpstream(String linkType);

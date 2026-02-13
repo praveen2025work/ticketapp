@@ -1,5 +1,5 @@
 import axiosClient from './axiosClient';
-import type { DashboardMetrics, FastProblem } from '../types';
+import type { DashboardMetrics, FastProblem, PagedResponse } from '../types';
 
 export const dashboardApi = {
   getMetrics: async (params?: { region?: string; application?: string; period?: string }): Promise<DashboardMetrics> => {
@@ -36,8 +36,14 @@ export const dashboardApi = {
     return response.data;
   },
 
-  getBacklog: async (region?: string): Promise<FastProblem[]> => {
-    const response = await axiosClient.get<FastProblem[]>('/dashboard/backlog', { params: region ? { region } : undefined });
+  getBacklog: async (params?: { region?: string; page?: number; size?: number }): Promise<PagedResponse<FastProblem>> => {
+    const queryParams: Record<string, string | number> = {};
+    if (params?.region) queryParams.region = params.region;
+    if (params?.page !== undefined) queryParams.page = params.page;
+    if (params?.size !== undefined) queryParams.size = params.size;
+    const response = await axiosClient.get<PagedResponse<FastProblem>>('/dashboard/backlog', {
+      params: Object.keys(queryParams).length ? queryParams : undefined,
+    });
     return response.data;
   },
 

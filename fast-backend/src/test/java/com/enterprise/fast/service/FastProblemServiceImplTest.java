@@ -97,7 +97,7 @@ class FastProblemServiceImplTest {
     @Test
     void getAll_ReturnsPagedResponse() {
         Page<FastProblem> page = new PageImpl<>(List.of(problem));
-        when(repository.findByDeletedFalse(any(Pageable.class))).thenReturn(page);
+        when(repository.findByDeletedFalseAndArchivedFalse(any(Pageable.class))).thenReturn(page);
         when(mapper.toSummaryResponse(any())).thenReturn(response);
 
         PagedResponse<FastProblemResponse> result = service.getAll(0, 20, "createdDate", "desc");
@@ -126,5 +126,19 @@ class FastProblemServiceImplTest {
         assertThatThrownBy(() -> service.updateStatus(1L, "RESOLVED", "admin"))
                 .isInstanceOf(InvalidStateTransitionException.class);
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void getByStatus_WhenArchived_UsesSpecAndReturnsPagedResponse() {
+        Page<FastProblem> page = new PageImpl<>(List.of(problem));
+        when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+        when(mapper.toSummaryResponse(any())).thenReturn(response);
+
+        PagedResponse<FastProblemResponse> result = service.getByStatus("ARCHIVED", 0, 20);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("Test Problem");
+        verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
 }

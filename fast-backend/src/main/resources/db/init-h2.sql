@@ -72,7 +72,9 @@ CREATE TABLE IF NOT EXISTS fast_problem (
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     resolved_date TIMESTAMP,
-    deleted BOOLEAN DEFAULT FALSE
+    closed_date TIMESTAMP,
+    deleted BOOLEAN DEFAULT FALSE,
+    archived BOOLEAN DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_fast_problem_status ON fast_problem(status);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_classification ON fast_problem(classification);
@@ -86,6 +88,8 @@ CREATE INDEX IF NOT EXISTS idx_fast_problem_deleted_created ON fast_problem(dele
 CREATE INDEX IF NOT EXISTS idx_fast_problem_affected_app ON fast_problem(affected_application);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_request_number ON fast_problem(request_number);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_resolved_date ON fast_problem(resolved_date);
+CREATE INDEX IF NOT EXISTS idx_fast_problem_closed_date ON fast_problem(closed_date);
+CREATE INDEX IF NOT EXISTS idx_fast_problem_archived ON fast_problem(archived);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_updated_date ON fast_problem(updated_date);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_assigned_to ON fast_problem(assigned_to);
 
@@ -205,6 +209,7 @@ CREATE TABLE IF NOT EXISTS ticket_comment (
     CONSTRAINT fk_tc_problem FOREIGN KEY (fast_problem_id) REFERENCES fast_problem(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_ticket_comment_problem_id ON ticket_comment(fast_problem_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_comment_problem_created ON ticket_comment(fast_problem_id, created_date);
 
 -- APP_SETTINGS
 CREATE TABLE IF NOT EXISTS app_settings (

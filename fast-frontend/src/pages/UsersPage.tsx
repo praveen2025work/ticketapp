@@ -25,7 +25,7 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['users', page],
-    queryFn: () => usersApi.list(page, 20),
+    queryFn: () => usersApi.list(page, 100),
     enabled: Boolean(user),
     retry: 2,
   });

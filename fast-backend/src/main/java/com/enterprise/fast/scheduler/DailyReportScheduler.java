@@ -61,7 +61,7 @@ public class DailyReportScheduler {
 
     private void sendReportForZone(RegionalCode zone, String[] toEmails) {
         List<FastProblemResponse> openTickets = problemService.exportWithFilters(
-                null, zone.name(), null, null, null, null, "OPEN", 500);
+                null, zone.name(), null, null, null, null, "OPEN", null, null, null, null, null, 500);
         String subject = "FAST Daily Report – " + zone.name() + " – " + java.time.LocalDate.now();
         String body = dailyReportTemplateService.buildHtml(zone.name(), java.time.LocalDate.now().toString(), openTickets);
         for (String to : toEmails) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   DocumentCheckIcon,
@@ -35,9 +35,13 @@ const btnIcon = 'inline-block w-5 h-5 shrink-0';
 const btnBase = 'inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50';
 const btnIconOnly = 'inline-flex items-center justify-center p-2 rounded-xl text-sm transition-colors disabled:opacity-50';
 
+export type TicketListFilters = { q?: string; region?: string; classification?: string; application?: string; status?: string; fromDate?: string; toDate?: string; ageMin?: number; ageMax?: number; minImpact?: number; priority?: number };
+
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const previousFilters = (location.state as { filters?: TicketListFilters } | null)?.filters;
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newPropKey, setNewPropKey] = useState('');
@@ -48,7 +52,6 @@ export default function TicketDetailPage() {
   const [newCommentText, setNewCommentText] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
   const [showEmailModal, setShowEmailModal] = useState(false);
-
   const { data: ticket, isLoading, error, refetch } = useQuery<FastProblem>({
     queryKey: ['problems', id],
     queryFn: () => problemApi.getById(Number(id!)),
@@ -111,7 +114,25 @@ export default function TicketDetailPage() {
   });
 
   const canAssignBtbTechLead = (user?.role === 'ADMIN' || user?.role === 'RTB_OWNER') &&
-    ticket && ['ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED'].includes(ticket.status);
+    ticket && ['ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'].includes(ticket.status);
+
+  const buildTicketsUrl = () => {
+    const f = previousFilters;
+    const params = new URLSearchParams();
+    if (f?.q?.trim()) params.set('q', f.q.trim());
+    if (f?.region) params.set('region', f.region);
+    if (f?.classification) params.set('classification', f.classification);
+    if (f?.application) params.set('application', f.application);
+    if (f?.status) params.set('status', f.status);
+    if (f?.fromDate) params.set('fromDate', f.fromDate);
+    if (f?.toDate) params.set('toDate', f.toDate);
+    if (f?.ageMin != null && f.ageMin >= 0) params.set('ageMin', String(f.ageMin));
+    if (f?.ageMax != null && f.ageMax >= 0) params.set('ageMax', String(f.ageMax));
+    if (f?.minImpact != null && f.minImpact >= 0) params.set('minImpact', String(f.minImpact));
+    if (f?.priority != null && f.priority >= 1 && f.priority <= 5) params.set('priority', String(f.priority));
+    const qs = params.toString();
+    return `/tickets${qs ? `?${qs}` : ''}`;
+  };
 
   const ticketApplicationIds = ticket?.applications?.map((a) => a.id) ?? [];
   const { data: techLeads = [] } = useQuery({
@@ -134,6 +155,7 @@ export default function TicketDetailPage() {
     ROOT_CAUSE_IDENTIFIED: 'FIX_IN_PROGRESS',
     FIX_IN_PROGRESS: 'RESOLVED',
     RESOLVED: 'CLOSED',
+    CLOSED: 'ARCHIVED',
   };
 
   if (isLoading) return <LoadingSpinner message="Loading ticket..." />;
@@ -151,7 +173,7 @@ export default function TicketDetailPage() {
     );
   }
 
-  const isAging = !['RESOLVED', 'CLOSED'].includes(ticket.status) && (ticket.ticketAgeDays ?? 0) >= 20;
+  const isAging = !['RESOLVED', 'CLOSED', 'ARCHIVED'].includes(ticket.status) && (ticket.ticketAgeDays ?? 0) >= 20;
 
   const hasCommentInLast24h = (): boolean => {
     const comments = ticket.comments ?? [];
@@ -191,7 +213,7 @@ export default function TicketDetailPage() {
       <header className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <section className="min-w-0">
-            <button onClick={() => navigate('/tickets')} className="text-sm text-primary hover:underline mb-1 block">
+            <button onClick={() => navigate(buildTicketsUrl())} className="text-sm text-primary hover:underline mb-1 block">
               &larr; Back to Tickets
             </button>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 break-words">
@@ -237,6 +259,13 @@ export default function TicketDetailPage() {
                 className={`${btnIconOnly} bg-primary text-white hover:bg-primary-hover`}
                 title="Send email to assignee">
                 <EnvelopeIcon className="w-5 h-5" aria-hidden />
+              </button>
+            )}
+            {user?.role === 'ADMIN' && (ticket.status === 'CLOSED' || ticket.status === 'REJECTED') && (
+              <button onClick={() => statusMutation.mutate('ARCHIVED')} disabled={actionLoading}
+                className={`${btnBase} bg-slate-500 text-white hover:bg-slate-600`}
+                title="Archive ticket">
+                Archive
               </button>
             )}
             {user?.role === 'ADMIN' && (ticket.status === 'NEW' || ticket.status === 'ASSIGNED') && (
@@ -351,7 +380,7 @@ export default function TicketDetailPage() {
                     const blob = new Blob([html], { type: 'text/html' });
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob);
-                    a.download = `ticket-${(ticket.pbtId || ticket.id).replace(/\s+/g, '-')}.html`;
+                    a.download = `ticket-${String(ticket.pbtId ?? ticket.id).replace(/\s+/g, '-')}.html`;
                     a.click();
                     URL.revokeObjectURL(a.href);
                   }}

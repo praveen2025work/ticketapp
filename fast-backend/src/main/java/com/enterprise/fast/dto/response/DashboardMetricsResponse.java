@@ -16,6 +16,7 @@ public class DashboardMetricsResponse {
     private long totalOpenTickets;
     private long totalResolvedTickets;
     private long totalClosedTickets;
+    private long totalArchivedTickets;
     private Double averageResolutionTimeHours;
     private Double slaCompliancePercentage;
     private Map<String, Long> ticketsByClassification;

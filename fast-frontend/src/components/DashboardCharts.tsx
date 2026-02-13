@@ -16,29 +16,35 @@ const CLASS_COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 const RAG_COLORS = ['#22c55e', '#f59e0b', '#ef4444']; // G, A, R
 const REGION_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#06b6d4'];
 
+export type ChartNavigateFilters = { status?: string; region?: string; classification?: string; ragStatus?: string };
+
 interface DashboardChartsProps {
   metrics: DashboardMetrics;
+  /** When set, clicking chart segments navigates to tickets page with the clicked filter. */
+  onNavigateToTickets?: (filters: ChartNavigateFilters) => void;
 }
 
-export default function DashboardCharts({ metrics }: DashboardChartsProps) {
-  const classificationData = Object.entries(metrics.ticketsByClassification).map(([name, value]) => ({
-    name: name === 'A' ? 'Approve' : name === 'R' ? 'Review' : 'Priority',
+export default function DashboardCharts({ metrics, onNavigateToTickets }: DashboardChartsProps) {
+  const classificationData = Object.entries(metrics.ticketsByClassification).map(([key, value]) => ({
+    name: key === 'A' ? 'Approve' : key === 'R' ? 'Review' : 'Priority',
     value,
+    filterKey: key,
   }));
 
   const regionData = Object.entries(metrics.ticketsByRegion).map(([name, value]) => ({ name, value }));
 
   const ragData = metrics.ticketsByRag
-    ? Object.entries(metrics.ticketsByRag).map(([name, value]) => ({
-        name: name === 'G' ? 'Green (≤15d)' : name === 'A' ? 'Amber (15–20d)' : 'Red (>20d)',
-        shortName: name === 'G' ? 'Green' : name === 'A' ? 'Amber' : 'Red',
+    ? Object.entries(metrics.ticketsByRag).map(([key, value]) => ({
+        name: key === 'G' ? 'Green (≤15d)' : key === 'A' ? 'Amber (15–20d)' : 'Red (>20d)',
+        shortName: key === 'G' ? 'Green' : key === 'A' ? 'Amber' : 'Red',
         value,
+        filterKey: key,
       }))
     : [];
 
   const statusData = Object.entries(metrics.ticketsByStatus)
     .filter(([, v]) => v > 0)
-    .map(([name, value]) => ({ name: name.replace(/_/g, ' '), value }));
+    .map(([statusKey, value]) => ({ name: statusKey.replace(/_/g, ' '), value, filterKey: statusKey }));
 
   const resolutionData = Object.entries(metrics.avgResolutionByRegion).map(([name, value]) => ({
     name,
@@ -61,6 +67,14 @@ export default function DashboardCharts({ metrics }: DashboardChartsProps) {
                 paddingAngle={2}
                 dataKey="value"
                 label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                onClick={
+                  onNavigateToTickets
+                    ? (data: { filterKey?: string }) => {
+                        if (data?.filterKey) onNavigateToTickets({ classification: data.filterKey });
+                      }
+                    : undefined
+                }
+                style={onNavigateToTickets ? { cursor: 'pointer' } : undefined}
               >
                 {classificationData.map((_, idx) => (
                   <Cell key={idx} fill={CLASS_COLORS[idx % CLASS_COLORS.length]} />
@@ -86,10 +100,18 @@ export default function DashboardCharts({ metrics }: DashboardChartsProps) {
                   outerRadius={80}
                   paddingAngle={2}
                   dataKey="value"
-                  label={({ shortName, percent, value }) =>
-                    value > 0 ? `${shortName} ${((percent ?? 0) * 100).toFixed(0)}%` : ''
+                  label={({ payload, percent, value }) =>
+                    value > 0 ? `${(payload as { shortName?: string })?.shortName ?? payload?.name} ${((percent ?? 0) * 100).toFixed(0)}%` : ''
                   }
                   labelLine={{ strokeWidth: 1 }}
+                  onClick={
+                    onNavigateToTickets
+                      ? (data: { filterKey?: string }) => {
+                          if (data?.filterKey) onNavigateToTickets({ ragStatus: data.filterKey });
+                        }
+                      : undefined
+                  }
+                  style={onNavigateToTickets ? { cursor: 'pointer' } : undefined}
                 >
                   {ragData.map((_, idx) => (
                     <Cell key={idx} fill={RAG_COLORS[idx % RAG_COLORS.length]} />
@@ -111,7 +133,20 @@ export default function DashboardCharts({ metrics }: DashboardChartsProps) {
               <XAxis dataKey="name" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="value" name="Tickets" radius={[4, 4, 0, 0]}>
+              <Bar
+                dataKey="value"
+                name="Tickets"
+                radius={[4, 4, 0, 0]}
+                onClick={
+                  onNavigateToTickets
+                    ? (data) => {
+                        const region = data?.name;
+                        if (region) onNavigateToTickets({ region });
+                      }
+                    : undefined
+                }
+                style={onNavigateToTickets ? { cursor: 'pointer' } : undefined}
+              >
                 {regionData.map((_, idx) => (
                   <Cell key={idx} fill={REGION_COLORS[idx % REGION_COLORS.length]} />
                 ))}
@@ -130,7 +165,21 @@ export default function DashboardCharts({ metrics }: DashboardChartsProps) {
               <XAxis type="number" tick={{ fontSize: 12 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={55} />
               <Tooltip />
-              <Bar dataKey="value" name="Count" fill="#6366f1" radius={[0, 4, 4, 0]} />
+              <Bar
+                dataKey="value"
+                name="Count"
+                fill="#6366f1"
+                radius={[0, 4, 4, 0]}
+                onClick={
+                  onNavigateToTickets
+                    ? (data) => {
+                        const status = (data as { filterKey?: string })?.filterKey;
+                        if (status) onNavigateToTickets({ status });
+                      }
+                    : undefined
+                }
+                style={onNavigateToTickets ? { cursor: 'pointer' } : undefined}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -145,7 +194,21 @@ export default function DashboardCharts({ metrics }: DashboardChartsProps) {
               <XAxis dataKey="name" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip formatter={(v) => [typeof v === 'number' && v > 0 ? `${v}h` : 'N/A', 'Hours']} />
-              <Bar dataKey="hours" name="Hours" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="hours"
+                name="Hours"
+                fill="#10b981"
+                radius={[4, 4, 0, 0]}
+                onClick={
+                  onNavigateToTickets
+                    ? (data) => {
+                        const region = (data as { name?: string })?.name;
+                        if (region) onNavigateToTickets({ region });
+                      }
+                    : undefined
+                }
+                style={onNavigateToTickets ? { cursor: 'pointer' } : undefined}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

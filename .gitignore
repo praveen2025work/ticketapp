@@ -1,6 +1,9 @@
 # Cloudflare tunnel binary
 .bin/
 
+# Local editor state
+.cursor/
+
 # Env (may contain secrets)
 .env
 

@@ -143,8 +143,16 @@ public class FastProblem {
     @Column(name = "resolved_date")
     private LocalDateTime resolvedDate;
 
+    /** Set when status becomes CLOSED; used to archive after 7 days. */
+    @Column(name = "closed_date")
+    private LocalDateTime closedDate;
+
     @Builder.Default
     private Boolean deleted = false;
+
+    /** Archived tickets (CLOSED 7+ days) are excluded from regular list views. */
+    @Builder.Default
+    private Boolean archived = false;
 
     @OneToMany(mappedBy = "fastProblem", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

@@ -4,7 +4,7 @@ export type Classification = 'A' | 'R' | 'P';
 export type RagStatus = 'G' | 'A' | 'R';
 export type RegionalCode = 'APAC' | 'EMEA' | 'AMER';
 export type StatusIndicator = 'R16' | 'B16';
-export type TicketStatus = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'ROOT_CAUSE_IDENTIFIED' | 'FIX_IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED';
+export type TicketStatus = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'ROOT_CAUSE_IDENTIFIED' | 'FIX_IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED' | 'ARCHIVED';
 export type ApprovalDecision = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type UserRole = 'ADMIN' | 'REVIEWER' | 'APPROVER' | 'RTB_OWNER' | 'TECH_LEAD' | 'PROJECT_MANAGER' | 'READ_ONLY';
 
@@ -121,6 +121,7 @@ export interface DashboardMetrics {
   totalOpenTickets: number;
   totalResolvedTickets: number;
   totalClosedTickets: number;
+  totalArchivedTickets?: number;
   averageResolutionTimeHours: number | null;
   slaCompliancePercentage: number | null;
   ticketsByClassification: Record<string, number>;

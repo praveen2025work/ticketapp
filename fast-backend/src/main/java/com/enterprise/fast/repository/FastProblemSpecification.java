@@ -2,6 +2,7 @@ package com.enterprise.fast.repository;
 
 import com.enterprise.fast.domain.entity.FastProblem;
 import com.enterprise.fast.domain.enums.Classification;
+import com.enterprise.fast.domain.enums.RagStatus;
 import com.enterprise.fast.domain.enums.RegionalCode;
 import com.enterprise.fast.domain.enums.TicketStatus;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,7 +31,7 @@ public final class FastProblemSpecification {
     public static Specification<FastProblem> withFilters(String keyword, String regionCode, String classification,
                                                         String application, LocalDate fromDate, LocalDate toDate,
                                                         String statusFilter) {
-        return withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, statusFilter);
+        return withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, statusFilter, null, null, null, null, null);
     }
 
     /** Same as above with optional resolvedDate range for period metrics (weekly/monthly). */
@@ -38,6 +39,14 @@ public final class FastProblemSpecification {
                                                         String application, LocalDate fromDate, LocalDate toDate,
                                                         LocalDate resolvedFrom, LocalDate resolvedTo,
                                                         String statusFilter) {
+        return withFilters(keyword, regionCode, classification, application, fromDate, toDate, resolvedFrom, resolvedTo, statusFilter, null, null, null, null, null);
+    }
+
+    /** Full filters including RAG, Age, Impact, Priority for ticket list. */
+    public static Specification<FastProblem> withFilters(String keyword, String regionCode, String classification,
+                                                        String application, LocalDate fromDate, LocalDate toDate,
+                                                        LocalDate resolvedFrom, LocalDate resolvedTo,
+                                                        String statusFilter, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority) {
         return (root, query, cb) -> {
             if (regionCode != null && !regionCode.isBlank()) {
                 query.distinct(true);
@@ -47,18 +56,28 @@ public final class FastProblemSpecification {
             }
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("deleted"), false));
+            // When filtering by ARCHIVED we include archived tickets; otherwise exclude them
+            boolean filterByArchived = "ARCHIVED".equalsIgnoreCase(statusFilter);
+            if (!filterByArchived) {
+                predicates.add(cb.equal(root.get("archived"), false));
+            }
 
             if (keyword != null && !keyword.isBlank()) {
-                String pattern = "%" + keyword.toLowerCase() + "%";
-                Predicate keywordPredicate = cb.or(
+                String trimmed = keyword.trim();
+                if (trimmed.isEmpty()) {
+                    // skip empty keyword
+                } else {
+                    String pattern = "%" + trimmed.toLowerCase() + "%";
+                    Predicate keywordPredicate = cb.or(
                         cb.like(cb.lower(root.get("title")), pattern),
                         cb.like(cb.lower(cb.coalesce(root.get("description"), "")), pattern),
                         cb.like(cb.lower(cb.coalesce(root.get("pbtId"), "")), pattern),
                         cb.like(cb.lower(cb.coalesce(root.get("servicenowIncidentNumber"), "")), pattern),
                         cb.like(cb.lower(cb.coalesce(root.get("servicenowProblemNumber"), "")), pattern),
                         cb.like(cb.lower(cb.coalesce(root.get("affectedApplication"), "")), pattern)
-                );
-                predicates.add(keywordPredicate);
+                    );
+                    predicates.add(keywordPredicate);
+                }
             }
 
             if (regionCode != null && !regionCode.isBlank()) {
@@ -112,7 +131,13 @@ public final class FastProblemSpecification {
             if (statusFilter != null && !statusFilter.isBlank()) {
                 var statusField = root.get("status");
                 if ("OPEN".equalsIgnoreCase(statusFilter)) {
-                    predicates.add(cb.not(statusField.in(Set.of(TicketStatus.RESOLVED, TicketStatus.CLOSED))));
+                    predicates.add(cb.not(statusField.in(Set.of(TicketStatus.RESOLVED, TicketStatus.CLOSED, TicketStatus.REJECTED, TicketStatus.ARCHIVED))));
+                } else if ("ARCHIVED".equalsIgnoreCase(statusFilter)) {
+                    // Archived: status = ARCHIVED or legacy archived = true
+                    predicates.add(cb.or(
+                            cb.equal(statusField, TicketStatus.ARCHIVED),
+                            cb.equal(root.get("archived"), true)
+                    ));
                 } else {
                     try {
                         TicketStatus status = TicketStatus.valueOf(statusFilter.toUpperCase());
@@ -120,6 +145,27 @@ public final class FastProblemSpecification {
                     } catch (IllegalArgumentException ignored) {
                     }
                 }
+            }
+
+            if (ragStatus != null && !ragStatus.isBlank()) {
+                try {
+                    RagStatus rag = RagStatus.valueOf(ragStatus.toUpperCase());
+                    predicates.add(cb.equal(root.get("ragStatus"), rag));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+
+            if (ageMin != null && ageMin >= 0) {
+                predicates.add(cb.greaterThanOrEqualTo(cb.coalesce(root.get("ticketAgeDays"), 0), ageMin));
+            }
+            if (ageMax != null && ageMax >= 0) {
+                predicates.add(cb.lessThanOrEqualTo(cb.coalesce(root.get("ticketAgeDays"), 0), ageMax));
+            }
+            if (minImpact != null && minImpact >= 0) {
+                predicates.add(cb.greaterThanOrEqualTo(cb.coalesce(root.get("userImpactCount"), 0), minImpact));
+            }
+            if (priority != null && priority >= 1 && priority <= 5) {
+                predicates.add(cb.equal(root.get("priority"), priority));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

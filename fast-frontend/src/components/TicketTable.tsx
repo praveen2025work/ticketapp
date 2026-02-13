@@ -4,7 +4,8 @@ import RagBadge from './RagBadge';
 import { Link } from 'react-router-dom';
 
 const AGING_THRESHOLD_DAYS = 20;
-const RESOLVED_STATUSES = ['RESOLVED', 'CLOSED'];
+/** Completed statuses: no red/aging row highlight (issues are done). */
+const COMPLETED_STATUSES = ['RESOLVED', 'CLOSED', 'ARCHIVED'];
 const UPSTREAM_LINK_TYPES = ['JIRA', 'SERVICEFIRST'];
 
 function formatPriority(p: number | null | undefined): string {
@@ -21,15 +22,32 @@ function upstreamLinks(ticket: FastProblem): TicketLink[] {
 
 export type GroupByOption = 'none' | 'application';
 
+export type BackFilters = {
+  q?: string;
+  region?: string;
+  classification?: string;
+  application?: string;
+  status?: string;
+  ragStatus?: string;
+  fromDate?: string;
+  toDate?: string;
+  ageMin?: number;
+  ageMax?: number;
+  minImpact?: number;
+  priority?: number;
+};
+
 interface TicketTableProps {
   tickets: FastProblem[];
   isLoading?: boolean;
   groupBy?: GroupByOption;
   /** When true, show a column with JIRA / ServiceFirst ticket links. */
   showUpstreamLinks?: boolean;
+  /** Filters to preserve when navigating to ticket detail; used for "Back to Tickets" */
+  backFilters?: BackFilters;
 }
 
-function TicketTableInner({ tickets, showUpstreamLinks }: { tickets: FastProblem[]; showUpstreamLinks?: boolean }) {
+function TicketTableInner({ tickets, showUpstreamLinks, backFilters }: { tickets: FastProblem[]; showUpstreamLinks?: boolean; backFilters?: BackFilters }) {
   const statusColors: Record<string, string> = {
     NEW: 'bg-sky-100 text-sky-800',
     ASSIGNED: 'bg-violet-100 text-violet-800',
@@ -39,10 +57,11 @@ function TicketTableInner({ tickets, showUpstreamLinks }: { tickets: FastProblem
     RESOLVED: 'bg-emerald-100 text-emerald-800',
     CLOSED: 'bg-slate-100 text-slate-700',
     REJECTED: 'bg-rose-100 text-rose-800',
+    ARCHIVED: 'bg-slate-100 text-slate-600',
   };
 
   const isAging = (ticket: FastProblem) =>
-    !RESOLVED_STATUSES.includes(ticket.status) &&
+    !COMPLETED_STATUSES.includes(ticket.status) &&
     (ticket.ticketAgeDays ?? 0) >= AGING_THRESHOLD_DAYS;
 
   return (
@@ -109,6 +128,7 @@ function TicketTableInner({ tickets, showUpstreamLinks }: { tickets: FastProblem
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link
                     to={`/tickets/${ticket.id}`}
+                    state={backFilters ? { filters: backFilters } : undefined}
                     className="flex items-center gap-2 group"
                   >
                     {aging && (
@@ -201,7 +221,7 @@ function TicketTableInner({ tickets, showUpstreamLinks }: { tickets: FastProblem
   );
 }
 
-export default function TicketTable({ tickets, isLoading, groupBy = 'none', showUpstreamLinks = false }: TicketTableProps) {
+export default function TicketTable({ tickets, isLoading, groupBy = 'none', showUpstreamLinks = false, backFilters }: TicketTableProps) {
   if (isLoading) {
     return <div className="text-center py-8 text-slate-500 dark:text-slate-400">Loading...</div>;
   }
@@ -226,12 +246,12 @@ export default function TicketTable({ tickets, isLoading, groupBy = 'none', show
             <h3 className="px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-600">
               {app} <span className="text-slate-500 dark:text-slate-400 font-normal">({grouped[app].length} ticket{grouped[app].length !== 1 ? 's' : ''})</span>
             </h3>
-            <TicketTableInner tickets={grouped[app]} showUpstreamLinks={showUpstreamLinks} />
+            <TicketTableInner tickets={grouped[app]} showUpstreamLinks={showUpstreamLinks} backFilters={backFilters} />
           </div>
         ))}
       </div>
     );
   }
 
-  return <TicketTableInner tickets={tickets} showUpstreamLinks={showUpstreamLinks} />;
+  return <TicketTableInner tickets={tickets} showUpstreamLinks={showUpstreamLinks} backFilters={backFilters} />;
 }

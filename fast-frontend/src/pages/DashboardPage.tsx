@@ -1,27 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../shared/api/dashboardApi';
 import { problemApi } from '../shared/api/problemApi';
 import { applicationsApi } from '../shared/api/applicationsApi';
 import type { DashboardMetrics } from '../shared/types';
 import type { FastProblem, PagedResponse, RegionalCode } from '../shared/types';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../shared/context/AuthContext';
 import MetricsCards from '../components/MetricsCards';
 import type { StatusFilter } from '../components/MetricsCards';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DashboardCharts from '../components/DashboardCharts';
-import TicketTable from '../components/TicketTable';
+import TicketTable, { type BackFilters } from '../components/TicketTable';
 import ApiErrorState from '../components/ApiErrorState';
 
 const REGIONS: RegionalCode[] = ['APAC', 'EMEA', 'AMER'];
+const BACKLOG_PAGE_SIZE = 100;
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState<StatusFilter>(null);
   const [applicationFilter, setApplicationFilter] = useState('');
   const [regionFilter, setRegionFilter] = useState('');
   const [periodFilter, setPeriodFilter] = useState<'overall' | 'weekly' | 'monthly'>('overall');
+  const [backlogPage, setBacklogPage] = useState(0);
   const isReadOnly = user?.role === 'READ_ONLY';
 
   const metricsFilter = {
@@ -46,6 +49,7 @@ export default function DashboardPage() {
     ...(selectedFilter === 'OPEN' && { status: 'OPEN' as const }),
     ...(selectedFilter === 'RESOLVED' && { status: 'RESOLVED' as const }),
     ...(selectedFilter === 'CLOSED' && { status: 'CLOSED' as const }),
+    ...(selectedFilter === 'ARCHIVED' && { status: 'ARCHIVED' as const }),
     ...(applicationFilter && { application: applicationFilter }),
     ...(regionFilter && { region: regionFilter }),
   };
@@ -54,8 +58,8 @@ export default function DashboardPage() {
     queryKey: ['dashboard', 'tickets', selectedFilter, applicationFilter, regionFilter],
     queryFn: async () => {
       const hasFilters = Object.keys(ticketFilters).length > 0;
-      if (!hasFilters) return problemApi.getAll(0, 50, 'createdDate', 'desc');
-      return problemApi.getWithFilters(ticketFilters, 0, 50, 'createdDate', 'desc');
+      if (!hasFilters) return problemApi.getAll(0, 100, 'createdDate', 'desc');
+      return problemApi.getWithFilters(ticketFilters, 0, 100, 'createdDate', 'desc');
     },
     enabled: !!selectedFilter,
   });
@@ -70,10 +74,14 @@ export default function DashboardPage() {
     queryFn: () => dashboardApi.getTop10(regionFilter || undefined),
   });
 
-  const { data: backlog = [] } = useQuery<FastProblem[]>({
-    queryKey: ['dashboard', 'backlog', regionFilter],
-    queryFn: () => dashboardApi.getBacklog(regionFilter || undefined),
+  const { data: backlog, isFetching: backlogLoading } = useQuery<PagedResponse<FastProblem>>({
+    queryKey: ['dashboard', 'backlog', regionFilter, backlogPage],
+    queryFn: () => dashboardApi.getBacklog({ region: regionFilter || undefined, page: backlogPage, size: BACKLOG_PAGE_SIZE }),
   });
+
+  useEffect(() => {
+    queueMicrotask(() => setBacklogPage(0));
+  }, [regionFilter]);
 
   if (isLoading) return <LoadingSpinner message="Loading dashboard..." />;
   if (error || !metrics) {
@@ -95,11 +103,17 @@ export default function DashboardPage() {
         ? 'Resolved Tickets'
         : selectedFilter === 'CLOSED'
           ? 'Closed Tickets'
-          : '';
+          : selectedFilter === 'ARCHIVED'
+            ? 'Archived Tickets'
+            : '';
   const filterHint = hasTicketFilters
     ? [applicationFilter, regionFilter].filter(Boolean).join(' · ')
     : null;
   const showTicketsSection = !!selectedFilter;
+  const backlogItems = backlog?.content ?? [];
+  const backlogTotalPages = backlog?.totalPages ?? 0;
+  const backlogHasPrev = backlogPage > 0;
+  const backlogHasNext = backlogTotalPages > 0 && backlogPage + 1 < backlogTotalPages;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -164,26 +178,89 @@ export default function DashboardPage() {
           metrics={metrics}
           selectedFilter={selectedFilter}
           onFilterChange={isReadOnly ? undefined : setSelectedFilter}
+          onNavigateToTickets={
+            isReadOnly
+              ? undefined
+              : (status) => {
+                  const params = new URLSearchParams();
+                  params.set('status', status);
+                  if (regionFilter) params.set('region', regionFilter);
+                  if (applicationFilter) params.set('application', applicationFilter);
+                  navigate(`/tickets?${params.toString()}`);
+                }
+          }
         />
       </div>
 
-      <DashboardCharts metrics={metrics} />
+      <DashboardCharts
+        metrics={metrics}
+        onNavigateToTickets={(filters) => {
+          const params = new URLSearchParams();
+          if (filters.status) params.set('status', filters.status);
+          if (filters.region) params.set('region', filters.region);
+          if (filters.classification) params.set('classification', filters.classification);
+          if (filters.ragStatus) params.set('ragStatus', filters.ragStatus);
+          navigate(`/tickets?${params.toString()}`);
+        }}
+      />
 
       {top10.length > 0 && (
         <div className="animate-slide-up">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Top 10 Finance Daily Production</h2>
           <div className="bg-white dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-600 overflow-hidden">
-            <TicketTable tickets={top10} />
+            <TicketTable
+              tickets={top10}
+              backFilters={(() => {
+                const f: BackFilters = {};
+                if (regionFilter) f.region = regionFilter;
+                if (applicationFilter) f.application = applicationFilter;
+                if (selectedFilter) f.status = selectedFilter;
+                return Object.keys(f).length > 0 ? f : undefined;
+              })()}
+            />
           </div>
         </div>
       )}
 
-      {backlog.length > 0 && (
+      {backlogItems.length > 0 && (
         <div className="animate-slide-up">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">Backlog (bi-weekly review)</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Tickets not yet In Progress (NEW, ASSIGNED).</p>
           <div className="bg-white dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-600 overflow-hidden">
-            <TicketTable tickets={backlog} />
+            {backlogTotalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                <span>
+                  Page {backlogPage + 1} of {backlogTotalPages}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBacklogPage((p) => Math.max(0, p - 1))}
+                    disabled={!backlogHasPrev || backlogLoading}
+                    className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBacklogPage((p) => p + 1)}
+                    disabled={!backlogHasNext || backlogLoading}
+                    className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+            <TicketTable
+              tickets={backlogItems}
+              backFilters={(() => {
+                const f: BackFilters = {};
+                if (regionFilter) f.region = regionFilter;
+                if (applicationFilter) f.application = applicationFilter;
+                return Object.keys(f).length > 0 ? f : undefined;
+              })()}
+            />
           </div>
         </div>
       )}
@@ -209,7 +286,18 @@ export default function DashboardPage() {
                 {inProgressWithoutComment.map((t) => (
                   <tr key={t.id} className="border-b border-amber-100 dark:border-amber-800/50">
                     <td className="py-2">
-                      <Link to={`/tickets/${t.id}`} className="text-primary hover:underline font-medium">FAST-{t.id}</Link>
+                      <Link
+                        to={`/tickets/${t.id}`}
+                        state={(() => {
+                          const f: BackFilters = {};
+                          if (regionFilter) f.region = regionFilter;
+                          if (applicationFilter) f.application = applicationFilter;
+                          return Object.keys(f).length > 0 ? { filters: f } : undefined;
+                        })()}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        FAST-{t.id}
+                      </Link>
                     </td>
                     <td className="py-2 text-slate-700 dark:text-slate-300 truncate max-w-xs">{t.title}</td>
                     <td className="py-2 text-slate-600 dark:text-slate-400">{t.assignedTo || '—'}</td>
@@ -233,6 +321,13 @@ export default function DashboardPage() {
             <TicketTable
               tickets={ticketsData?.content ?? []}
               isLoading={ticketsLoading}
+              backFilters={(() => {
+                const f: BackFilters = {};
+                if (regionFilter) f.region = regionFilter;
+                if (applicationFilter) f.application = applicationFilter;
+                if (selectedFilter) f.status = selectedFilter;
+                return Object.keys(f).length > 0 ? f : undefined;
+              })()}
             />
           </div>
         </div>

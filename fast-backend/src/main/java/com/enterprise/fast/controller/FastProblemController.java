@@ -49,6 +49,11 @@ public class FastProblemController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String ragStatus,
+            @RequestParam(required = false) Integer ageMin,
+            @RequestParam(required = false) Integer ageMax,
+            @RequestParam(required = false) Integer minImpact,
+            @RequestParam(required = false) Integer priority,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdDate") String sortBy,
@@ -57,9 +62,11 @@ public class FastProblemController {
                 || (classification != null && !classification.isBlank())
                 || (application != null && !application.isBlank())
                 || fromDate != null || toDate != null
-                || (status != null && !status.isBlank());
+                || (status != null && !status.isBlank())
+                || (ragStatus != null && !ragStatus.isBlank())
+                || ageMin != null || ageMax != null || minImpact != null || priority != null;
         if (hasFilters) {
-            return ResponseEntity.ok(problemService.findWithFilters(q, region, classification, application, fromDate, toDate, status, page, size, sortBy, direction));
+            return ResponseEntity.ok(problemService.findWithFilters(q, region, classification, application, fromDate, toDate, status, ragStatus, ageMin, ageMax, minImpact, priority, page, size, sortBy, direction));
         }
         return ResponseEntity.ok(problemService.getAll(page, size, sortBy, direction));
     }
@@ -226,8 +233,13 @@ public class FastProblemController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String ragStatus,
+            @RequestParam(required = false) Integer ageMin,
+            @RequestParam(required = false) Integer ageMax,
+            @RequestParam(required = false) Integer minImpact,
+            @RequestParam(required = false) Integer priority,
             @RequestParam(defaultValue = "1000") int limit) {
-        List<FastProblemResponse> data = problemService.exportWithFilters(q, region, classification, application, fromDate, toDate, status, limit);
+        List<FastProblemResponse> data = problemService.exportWithFilters(q, region, classification, application, fromDate, toDate, status, ragStatus, ageMin, ageMax, minImpact, priority, limit);
         String csv = toCsv(data);
         byte[] utf8Bom = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
         byte[] csvBytes = csv.getBytes(StandardCharsets.UTF_8);

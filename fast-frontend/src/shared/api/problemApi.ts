@@ -16,6 +16,11 @@ export const problemApi = {
       fromDate?: string;
       toDate?: string;
       status?: string;
+      ragStatus?: string;
+      ageMin?: number;
+      ageMax?: number;
+      minImpact?: number;
+      priority?: number;
     },
     page = 0,
     size = 20,
@@ -30,6 +35,11 @@ export const problemApi = {
     if (filters.fromDate) params.fromDate = filters.fromDate;
     if (filters.toDate) params.toDate = filters.toDate;
     if (filters.status) params.status = filters.status;
+    if (filters.ragStatus && filters.ragStatus.trim() !== '') params.ragStatus = filters.ragStatus.trim();
+    if (filters.ageMin != null && filters.ageMin >= 0) params.ageMin = filters.ageMin;
+    if (filters.ageMax != null && filters.ageMax >= 0) params.ageMax = filters.ageMax;
+    if (filters.minImpact != null && filters.minImpact >= 0) params.minImpact = filters.minImpact;
+    if (filters.priority != null && filters.priority >= 1 && filters.priority <= 5) params.priority = filters.priority;
     const response = await axiosClient.get('/problems', { params });
     return response.data;
   },

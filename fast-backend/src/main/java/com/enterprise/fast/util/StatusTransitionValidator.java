@@ -14,7 +14,9 @@ public final class StatusTransitionValidator {
             TicketStatus.IN_PROGRESS, Set.of(TicketStatus.ROOT_CAUSE_IDENTIFIED),
             TicketStatus.ROOT_CAUSE_IDENTIFIED, Set.of(TicketStatus.FIX_IN_PROGRESS),
             TicketStatus.FIX_IN_PROGRESS, Set.of(TicketStatus.RESOLVED),
-            TicketStatus.RESOLVED, Set.of(TicketStatus.CLOSED)
+            TicketStatus.RESOLVED, Set.of(TicketStatus.CLOSED),
+            TicketStatus.CLOSED, Set.of(TicketStatus.ARCHIVED),
+            TicketStatus.REJECTED, Set.of(TicketStatus.ARCHIVED)
     );
 
     private StatusTransitionValidator() {

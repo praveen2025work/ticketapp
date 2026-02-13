@@ -98,7 +98,7 @@ public class FastProblemServiceImpl implements FastProblemService {
         Sort sort = direction.equalsIgnoreCase("desc") ?
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
-        Page<FastProblem> problemPage = repository.findByDeletedFalse(pageable);
+        Page<FastProblem> problemPage = repository.findByDeletedFalseAndArchivedFalse(pageable);
         return toPagedResponse(problemPage);
     }
 
@@ -106,7 +106,7 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Transactional(readOnly = true)
     public PagedResponse<FastProblemResponse> getByRegion(String regionCode, int page, int size) {
         RegionalCode region = RegionalCode.valueOf(regionCode.toUpperCase());
-        Page<FastProblem> problemPage = repository.findByRegions_RegionalCodeAndDeletedFalse(region, PageRequest.of(page, size));
+        Page<FastProblem> problemPage = repository.findByRegions_RegionalCodeAndDeletedFalseAndArchivedFalse(region, PageRequest.of(page, size));
         return toPagedResponse(problemPage);
     }
 
@@ -114,7 +114,7 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Transactional(readOnly = true)
     public PagedResponse<FastProblemResponse> getByClassification(String classification, int page, int size) {
         Classification cls = Classification.valueOf(classification.toUpperCase());
-        Page<FastProblem> problemPage = repository.findByClassificationAndDeletedFalse(cls, PageRequest.of(page, size));
+        Page<FastProblem> problemPage = repository.findByClassificationAndDeletedFalseAndArchivedFalse(cls, PageRequest.of(page, size));
         return toPagedResponse(problemPage);
     }
 
@@ -122,7 +122,13 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Transactional(readOnly = true)
     public PagedResponse<FastProblemResponse> getByStatus(String status, int page, int size) {
         TicketStatus ticketStatus = TicketStatus.valueOf(status.toUpperCase());
-        Page<FastProblem> problemPage = repository.findByStatusAndDeletedFalse(ticketStatus, PageRequest.of(page, size));
+        Page<FastProblem> problemPage;
+        if (ticketStatus == TicketStatus.ARCHIVED) {
+            Specification<FastProblem> spec = FastProblemSpecification.withFilters(null, null, null, null, null, null, null, null, "ARCHIVED", null, null, null, null, null);
+            problemPage = repository.findAll(spec, PageRequest.of(page, size, Sort.by("closedDate").descending()));
+        } else {
+            problemPage = repository.findByStatusAndDeletedFalseAndArchivedFalse(ticketStatus, PageRequest.of(page, size));
+        }
         return toPagedResponse(problemPage);
     }
 
@@ -138,8 +144,9 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Transactional(readOnly = true)
     public PagedResponse<FastProblemResponse> findWithFilters(String keyword, String regionCode, String classification,
                                                               String application, LocalDate fromDate, LocalDate toDate,
-                                                              String status, int page, int size, String sortBy, String direction) {
-        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, regionCode, classification, application, fromDate, toDate, status);
+                                                              String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority,
+                                                              int page, int size, String sortBy, String direction) {
+        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, status, ragStatus, ageMin, ageMax, minImpact, priority);
         Sort sort = direction.equalsIgnoreCase("desc") ?
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -151,8 +158,8 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Transactional(readOnly = true)
     public List<FastProblemResponse> exportWithFilters(String keyword, String regionCode, String classification,
                                                        String application, LocalDate fromDate, LocalDate toDate,
-                                                       String status, int limit) {
-        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, regionCode, classification, application, fromDate, toDate, status);
+                                                       String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority, int limit) {
+        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, status, ragStatus, ageMin, ageMax, minImpact, priority);
         Pageable pageable = PageRequest.of(0, Math.min(limit, 10000), Sort.by("createdDate").descending());
         return repository.findAll(spec, pageable).getContent().stream()
                 .map(mapper::toSummaryResponse)
@@ -333,9 +340,15 @@ public class FastProblemServiceImpl implements FastProblemService {
             knowledgeArticleService.createFromResolvedProblem(id);
         }
 
-        // Handle closed status
+        // Handle closed status: set closedDate for archive eligibility (7 days later)
         if (targetStatus == TicketStatus.CLOSED) {
+            problem.setClosedDate(LocalDateTime.now());
             problem.setStatusIndicator(StatusIndicator.B16);
+        }
+
+        // Handle archived status: set archived flag so ticket is excluded from default lists
+        if (targetStatus == TicketStatus.ARCHIVED) {
+            problem.setArchived(true);
         }
 
         FastProblem saved = repository.save(problem);

@@ -24,12 +24,15 @@ export function subtractBusinessDays(date: Date, businessDays: number): Date {
   return result;
 }
 
+const DEFAULT_DAYS_BACK = 45;
+
 /**
- * Default ticket list date range: from 10 business days ago to today.
+ * Default ticket list date range: from 45 days ago to today.
  */
 export function getDefaultTicketDateRange(): { fromDate: string; toDate: string } {
   const today = new Date();
-  const from = subtractBusinessDays(today, 10);
+  const from = new Date(today);
+  from.setDate(from.getDate() - DEFAULT_DAYS_BACK);
   return {
     fromDate: formatDateForInput(from),
     toDate: formatDateForInput(today),

@@ -9,6 +9,7 @@ import com.enterprise.fast.domain.enums.RegionalCode;
 import com.enterprise.fast.domain.enums.TicketStatus;
 import com.enterprise.fast.dto.response.DashboardMetricsResponse;
 import com.enterprise.fast.dto.response.FastProblemResponse;
+import com.enterprise.fast.dto.response.PagedResponse;
 import com.enterprise.fast.mapper.FastProblemMapper;
 import com.enterprise.fast.repository.FastProblemLinkRepository;
 import com.enterprise.fast.repository.FastProblemRegionRepository;
@@ -18,7 +19,9 @@ import com.enterprise.fast.repository.KnowledgeArticleRepository;
 import com.enterprise.fast.service.DashboardService;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,6 +57,11 @@ public class DashboardServiceImpl implements DashboardService {
 
     private static final Set<TicketStatus> OPEN_STATUSES = Set.of(
             NEW, ASSIGNED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS);
+    private static final List<TicketStatus> OPEN_STATUS_LIST = List.of(
+            NEW, ASSIGNED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS);
+    private static final List<TicketStatus> BACKLOG_STATUS_LIST = List.of(NEW, ASSIGNED);
+    private static final List<TicketStatus> RESOLVED_STATUS_LIST = List.of(RESOLVED, CLOSED);
+    private static final int RESOLVED_PAGE_SIZE = 1000;
 
     @Override
     public DashboardMetricsResponse getOverallMetrics(String region, String application, String period) {
@@ -93,21 +100,27 @@ public class DashboardServiceImpl implements DashboardService {
 
         Specification<FastProblem> resolvedListSpec = periodFrom != null
                 ? FastProblemSpecification.withFilters(null, region, null, application, null, null, periodFrom, periodTo, null)
-                        .and((root, q, cb) -> root.get("status").in(List.of(RESOLVED, CLOSED)))
-                : baseSpec.and((root, q, cb) -> root.get("status").in(List.of(RESOLVED, CLOSED)));
-        List<FastProblem> resolvedList = problemRepository.findAll(resolvedListSpec, PageRequest.of(0, 50_000)).getContent();
+                        .and((root, q, cb) -> root.get("status").in(RESOLVED_STATUS_LIST))
+                : baseSpec.and((root, q, cb) -> root.get("status").in(RESOLVED_STATUS_LIST));
+        ResolvedMetrics resolvedMetrics = computeResolvedMetrics(resolvedListSpec);
 
+        Specification<FastProblem> archivedSpec = periodFrom != null
+                ? FastProblemSpecification.withFilters(null, region, null, application, periodFrom, periodTo, null, null, "ARCHIVED", null, null, null, null, null)
+                : FastProblemSpecification.withFilters(null, region, null, application, null, null, null, null, "ARCHIVED", null, null, null, null, null);
+
+        long totalArchived = problemRepository.count(archivedSpec);
         return DashboardMetricsResponse.builder()
                 .totalOpenTickets(totalOpen)
                 .totalResolvedTickets(totalResolved)
                 .totalClosedTickets(totalClosed)
-                .averageResolutionTimeHours(computeAverageResolutionTimeHoursFromList(resolvedList))
-                .slaCompliancePercentage(computeSlaCompliancePercentageFromList(resolvedList))
+                .totalArchivedTickets(totalArchived)
+                .averageResolutionTimeHours(resolvedMetrics.averageResolutionTimeHours)
+                .slaCompliancePercentage(resolvedMetrics.slaCompliancePercentage)
                 .ticketsByClassification(getTicketsByClassificationWithSpec(baseSpec))
                 .ticketsByRag(getTicketsByRagWithSpec(baseSpec))
                 .ticketsByRegion(getTicketsByRegionWithSpec(baseSpec))
-                .ticketsByStatus(getTicketsByStatusWithSpec(baseSpec))
-                .avgResolutionByRegion(computeResolutionTimeByRegionFromList(resolvedList))
+                .ticketsByStatus(getTicketsByStatusWithSpec(baseSpec, archivedSpec))
+                .avgResolutionByRegion(resolvedMetrics.avgResolutionByRegion)
                 .agingDistribution(getAgingDistributionWithSpec(baseSpec))
                 .build();
     }
@@ -121,24 +134,27 @@ public class DashboardServiceImpl implements DashboardService {
         long totalResolved = problemRepository.countByStatus(TicketStatus.RESOLVED);
         long totalClosed = problemRepository.countByStatus(TicketStatus.CLOSED);
 
+        long totalArchived = problemRepository.countArchived();
+        ResolvedMetrics resolvedMetrics = computeResolvedMetrics(resolvedSpecAll());
         return DashboardMetricsResponse.builder()
                 .totalOpenTickets(totalOpen)
                 .totalResolvedTickets(totalResolved)
                 .totalClosedTickets(totalClosed)
-                .averageResolutionTimeHours(computeAverageResolutionTimeHours())
-                .slaCompliancePercentage(computeSlaCompliancePercentage())
+                .totalArchivedTickets(totalArchived)
+                .averageResolutionTimeHours(resolvedMetrics.averageResolutionTimeHours)
+                .slaCompliancePercentage(resolvedMetrics.slaCompliancePercentage)
                 .ticketsByClassification(getTicketsByClassification())
                 .ticketsByRag(getTicketsByRag())
                 .ticketsByRegion(getTicketsByRegion())
                 .ticketsByStatus(getTicketsByStatus())
-                .avgResolutionByRegion(computeResolutionTimeByRegion())
+                .avgResolutionByRegion(resolvedMetrics.avgResolutionByRegion)
                 .agingDistribution(getAgingDistribution())
                 .build();
     }
 
     @Override
     public Map<String, Double> getResolutionTimeByRegion() {
-        return computeResolutionTimeByRegion();
+        return computeResolvedMetrics(resolvedSpecAll()).avgResolutionByRegion;
     }
 
     @Override
@@ -161,55 +177,47 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public List<FastProblemResponse> getInProgressWithoutRecentComment() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
-        List<FastProblem> inProgress = problemRepository.findByStatusAndDeletedFalseWithComments(IN_PROGRESS);
-        List<FastProblemResponse> result = new ArrayList<>();
-        for (FastProblem fp : inProgress) {
-            LocalDateTime lastComment = fp.getComments() == null || fp.getComments().isEmpty()
-                    ? null
-                    : fp.getComments().stream()
-                            .map(c -> c.getCreatedDate() != null ? c.getCreatedDate() : LocalDateTime.MIN)
-                            .max(Comparator.naturalOrder())
-                            .orElse(null);
-            if (lastComment == null || lastComment.isBefore(cutoff)) {
-                result.add(fastProblemMapper.toSummaryResponse(fp));
-            }
-        }
-        return result;
+        return problemRepository.findInProgressWithoutRecentComment(IN_PROGRESS, cutoff).stream()
+                .map(fastProblemMapper::toSummaryResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<FastProblemResponse> getTop10(String region) {
-        List<FastProblem> open = problemRepository.findByStatusInAndDeletedFalse(List.of(
-                NEW, ASSIGNED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS));
-        List<FastProblem> filtered = region != null && !region.isBlank()
-                ? open.stream().filter(fp -> fp.getRegions() != null && fp.getRegions().stream()
-                        .anyMatch(pr -> pr.getRegionalCode().name().equalsIgnoreCase(region)))
-                        .collect(Collectors.toList())
-                : open;
-        Comparator<FastProblem> byRag = Comparator.comparing(fp ->
-                fp.getRagStatus() == RagStatus.R ? 0 : fp.getRagStatus() == RagStatus.A ? 1 : 2);
-        Comparator<FastProblem> byPriority = Comparator.comparing(fp -> fp.getPriority() != null ? fp.getPriority() : 5);
-        Comparator<FastProblem> byAge = Comparator.comparing(fp -> -(fp.getTicketAgeDays() != null ? fp.getTicketAgeDays() : 0));
-        Comparator<FastProblem> byImpact = Comparator.comparing(fp -> -(fp.getUserImpactCount() != null ? fp.getUserImpactCount() : 0));
-        return filtered.stream()
-                .sorted(byRag.thenComparing(byPriority).thenComparing(byAge).thenComparing(byImpact))
-                .limit(10)
-                .map(fastProblemMapper::toSummaryResponse)
-                .collect(Collectors.toList());
+        PageRequest page = PageRequest.of(0, 10);
+        List<FastProblem> results;
+        if (region != null && !region.isBlank()) {
+            RegionalCode rc;
+            try {
+                rc = RegionalCode.valueOf(region.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return List.of();
+            }
+            results = problemRepository.findTopOpenTicketsByRegion(OPEN_STATUS_LIST, rc, page).getContent();
+        } else {
+            results = problemRepository.findTopOpenTickets(OPEN_STATUS_LIST, page).getContent();
+        }
+        return results.stream().map(fastProblemMapper::toSummaryResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<FastProblemResponse> getBacklog(String region) {
-        List<FastProblem> backlog = problemRepository.findByStatusInAndDeletedFalse(List.of(NEW, ASSIGNED));
-        List<FastProblem> filtered = region != null && !region.isBlank()
-                ? backlog.stream().filter(fp -> fp.getRegions() != null && fp.getRegions().stream()
-                        .anyMatch(pr -> pr.getRegionalCode().name().equalsIgnoreCase(region)))
-                        .collect(Collectors.toList())
-                : backlog;
-        return filtered.stream()
-                .sorted(Comparator.comparing(FastProblem::getCreatedDate, Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(fastProblemMapper::toSummaryResponse)
-                .collect(Collectors.toList());
+    public PagedResponse<FastProblemResponse> getBacklog(String region, int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size, 500));
+        PageRequest pageable = PageRequest.of(safePage, safeSize, Sort.by("createdDate").descending());
+        Page<FastProblem> results;
+        if (region != null && !region.isBlank()) {
+            RegionalCode rc;
+            try {
+                rc = RegionalCode.valueOf(region.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return emptyPage(safePage, safeSize);
+            }
+            results = problemRepository.findBacklogTicketsByRegion(BACKLOG_STATUS_LIST, rc, pageable);
+        } else {
+            results = problemRepository.findBacklogTickets(BACKLOG_STATUS_LIST, pageable);
+        }
+        return toPagedResponse(results);
     }
 
     @Override
@@ -232,7 +240,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public Double getSlaCompliancePercentage() {
-        return computeSlaCompliancePercentage();
+        return computeResolvedMetrics(resolvedSpecAll()).slaCompliancePercentage;
     }
 
     /** Resolution end time: resolvedDate when set, otherwise updatedDate (so RESOLVED/CLOSED without resolvedDate still get a time). */
@@ -240,70 +248,61 @@ public class DashboardServiceImpl implements DashboardService {
         return fp.getResolvedDate() != null ? fp.getResolvedDate() : fp.getUpdatedDate();
     }
 
-    /** DB-agnostic: compute average resolution time in hours from resolved/closed tickets (works on H2, MySQL, Oracle). */
-    private Double computeAverageResolutionTimeHours() {
-        List<FastProblem> resolved = problemRepository.findResolvedForMetrics(List.of(RESOLVED, CLOSED));
-        if (resolved.isEmpty()) return null;
-        double totalHours = 0;
+    private ResolvedMetrics computeResolvedMetrics(Specification<FastProblem> resolvedSpec) {
+        double totalHours = 0.0;
         int counted = 0;
-        for (FastProblem fp : resolved) {
-            LocalDateTime created = fp.getCreatedDate();
-            LocalDateTime end = resolutionEndTime(fp);
-            if (created != null && end != null) {
-                totalHours += Duration.between(created, end).toMinutes() / 60.0;
-                counted++;
-            }
-        }
-        return counted == 0 ? null : totalHours / counted;
-    }
-
-    /** DB-agnostic: compute SLA compliance % (resolved within target hours). Target: 80%. */
-    private Double computeSlaCompliancePercentage() {
-        List<FastProblem> resolved = problemRepository.findResolvedForMetrics(List.of(RESOLVED, CLOSED));
-        if (resolved.isEmpty()) return null; // N/A when no resolved tickets
         int withinSla = 0;
         int withTarget = 0;
-        for (FastProblem fp : resolved) {
-            LocalDateTime created = fp.getCreatedDate();
-            LocalDateTime end = resolutionEndTime(fp);
-            if (created != null && end != null && fp.getTargetResolutionHours() != null) {
-                double hours = Duration.between(created, end).toMinutes() / 60.0;
-                if (hours <= fp.getTargetResolutionHours()) withinSla++;
-                withTarget++;
-            }
-        }
-        return withTarget == 0 ? null : (double) withinSla / withTarget * 100.0;
-    }
 
-    /** DB-agnostic: average resolution time by region (from resolved/closed tickets with regions). */
-    private Map<String, Double> computeResolutionTimeByRegion() {
-        Map<String, Double> result = new LinkedHashMap<>();
-        for (RegionalCode region : RegionalCode.values()) {
-            result.put(region.name(), 0.0);
-        }
-        List<FastProblem> resolved = problemRepository.findResolvedForMetrics(List.of(RESOLVED, CLOSED));
-        Map<String, double[]> byRegion = new LinkedHashMap<>(); // region -> [sumHours, count]
+        Map<String, double[]> byRegion = new LinkedHashMap<>();
         for (RegionalCode r : RegionalCode.values()) {
             byRegion.put(r.name(), new double[]{0.0, 0.0});
         }
-        for (FastProblem fp : resolved) {
-            LocalDateTime created = fp.getCreatedDate();
-            LocalDateTime end = resolutionEndTime(fp);
-            if (created == null || end == null) continue;
-            double hours = Duration.between(created, end).toMinutes() / 60.0;
-            if (fp.getRegions() != null && !fp.getRegions().isEmpty()) {
-                fp.getRegions().forEach(pr -> {
-                    String name = pr.getRegionalCode().name();
-                    double[] pair = byRegion.get(name);
-                    if (pair != null) {
-                        pair[0] += hours;
-                        pair[1] += 1;
+
+        int page = 0;
+        Page<FastProblem> batch;
+        do {
+            batch = problemRepository.findAll(resolvedSpec, PageRequest.of(page, RESOLVED_PAGE_SIZE, Sort.by("id")));
+            for (FastProblem fp : batch.getContent()) {
+                LocalDateTime created = fp.getCreatedDate();
+                LocalDateTime end = resolutionEndTime(fp);
+                if (created == null || end == null) {
+                    continue;
+                }
+                double hours = Duration.between(created, end).toMinutes() / 60.0;
+                totalHours += hours;
+                counted++;
+                if (fp.getTargetResolutionHours() != null) {
+                    if (hours <= fp.getTargetResolutionHours()) {
+                        withinSla++;
                     }
-                });
+                    withTarget++;
+                }
+                if (fp.getRegions() != null && !fp.getRegions().isEmpty()) {
+                    fp.getRegions().forEach(pr -> {
+                        String name = pr.getRegionalCode().name();
+                        double[] pair = byRegion.get(name);
+                        if (pair != null) {
+                            pair[0] += hours;
+                            pair[1] += 1;
+                        }
+                    });
+                }
             }
-        }
-        byRegion.forEach((name, pair) -> result.put(name, pair[1] > 0 ? pair[0] / pair[1] : 0.0));
-        return result;
+            page++;
+        } while (batch.hasNext());
+
+        Double avgResolution = counted == 0 ? null : totalHours / counted;
+        Double slaCompliance = withTarget == 0 ? null : (double) withinSla / withTarget * 100.0;
+        Map<String, Double> avgByRegion = new LinkedHashMap<>();
+        byRegion.forEach((name, pair) -> avgByRegion.put(name, pair[1] > 0 ? pair[0] / pair[1] : 0.0));
+
+        return new ResolvedMetrics(avgResolution, slaCompliance, avgByRegion);
+    }
+
+    private Specification<FastProblem> resolvedSpecAll() {
+        return FastProblemSpecification.withFilters(null, null, null, null, null, null, null, null, null)
+                .and((root, q, cb) -> root.get("status").in(RESOLVED_STATUS_LIST));
     }
 
     @Override
@@ -326,69 +325,26 @@ public class DashboardServiceImpl implements DashboardService {
     private Map<String, Long> getTicketsByStatus() {
         Map<String, Long> result = new LinkedHashMap<>();
         for (TicketStatus status : TicketStatus.values()) {
-            result.put(status.name(), problemRepository.countByStatus(status));
+            long count = status == TicketStatus.ARCHIVED
+                    ? problemRepository.countArchived()
+                    : problemRepository.countByStatus(status);
+            result.put(status.name(), count);
         }
         return result;
     }
 
-    private Double computeAverageResolutionTimeHoursFromList(List<FastProblem> resolvedList) {
-        if (resolvedList.isEmpty()) return null;
-        double totalHours = 0;
-        int counted = 0;
-        for (FastProblem fp : resolvedList) {
-            LocalDateTime created = fp.getCreatedDate();
-            LocalDateTime end = resolutionEndTime(fp);
-            if (created != null && end != null) {
-                totalHours += Duration.between(created, end).toMinutes() / 60.0;
-                counted++;
-            }
-        }
-        return counted == 0 ? null : totalHours / counted;
-    }
+    private static final class ResolvedMetrics {
+        private final Double averageResolutionTimeHours;
+        private final Double slaCompliancePercentage;
+        private final Map<String, Double> avgResolutionByRegion;
 
-    private Double computeSlaCompliancePercentageFromList(List<FastProblem> resolvedList) {
-        if (resolvedList.isEmpty()) return null;
-        int withinSla = 0;
-        int withTarget = 0;
-        for (FastProblem fp : resolvedList) {
-            LocalDateTime created = fp.getCreatedDate();
-            LocalDateTime end = resolutionEndTime(fp);
-            if (created != null && end != null && fp.getTargetResolutionHours() != null) {
-                double hours = Duration.between(created, end).toMinutes() / 60.0;
-                if (hours <= fp.getTargetResolutionHours()) withinSla++;
-                withTarget++;
-            }
+        private ResolvedMetrics(Double averageResolutionTimeHours,
+                                Double slaCompliancePercentage,
+                                Map<String, Double> avgResolutionByRegion) {
+            this.averageResolutionTimeHours = averageResolutionTimeHours;
+            this.slaCompliancePercentage = slaCompliancePercentage;
+            this.avgResolutionByRegion = avgResolutionByRegion;
         }
-        return withTarget == 0 ? null : (double) withinSla / withTarget * 100.0;
-    }
-
-    private Map<String, Double> computeResolutionTimeByRegionFromList(List<FastProblem> resolvedList) {
-        Map<String, Double> result = new LinkedHashMap<>();
-        for (RegionalCode r : RegionalCode.values()) {
-            result.put(r.name(), 0.0);
-        }
-        Map<String, double[]> byRegion = new LinkedHashMap<>();
-        for (RegionalCode r : RegionalCode.values()) {
-            byRegion.put(r.name(), new double[]{0.0, 0.0});
-        }
-        for (FastProblem fp : resolvedList) {
-            LocalDateTime created = fp.getCreatedDate();
-            LocalDateTime end = resolutionEndTime(fp);
-            if (created == null || end == null) continue;
-            double hours = Duration.between(created, end).toMinutes() / 60.0;
-            if (fp.getRegions() != null && !fp.getRegions().isEmpty()) {
-                fp.getRegions().forEach(pr -> {
-                    String name = pr.getRegionalCode().name();
-                    double[] pair = byRegion.get(name);
-                    if (pair != null) {
-                        pair[0] += hours;
-                        pair[1] += 1;
-                    }
-                });
-            }
-        }
-        byRegion.forEach((name, pair) -> result.put(name, pair[1] > 0 ? pair[0] / pair[1] : 0.0));
-        return result;
     }
 
     private Map<String, Long> getTicketsByClassificationWithSpec(Specification<FastProblem> baseSpec) {
@@ -423,11 +379,12 @@ public class DashboardServiceImpl implements DashboardService {
         return result;
     }
 
-    private Map<String, Long> getTicketsByStatusWithSpec(Specification<FastProblem> baseSpec) {
+    private Map<String, Long> getTicketsByStatusWithSpec(Specification<FastProblem> baseSpec, Specification<FastProblem> archivedSpec) {
         Map<String, Long> result = new LinkedHashMap<>();
         for (TicketStatus status : TicketStatus.values()) {
-            long count = problemRepository.count(baseSpec.and((root, q, cb) ->
-                    cb.equal(root.get("status"), status)));
+            long count = status == TicketStatus.ARCHIVED && archivedSpec != null
+                    ? problemRepository.count(archivedSpec)
+                    : problemRepository.count(baseSpec.and((root, q, cb) -> cb.equal(root.get("status"), status)));
             result.put(status.name(), count);
         }
         return result;
@@ -442,5 +399,27 @@ public class DashboardServiceImpl implements DashboardService {
         result.put("P (>20 days)", problemRepository.count(baseSpec.and((root, q, cb) ->
                 cb.equal(root.get("classification"), Classification.P))));
         return result;
+    }
+
+    private PagedResponse<FastProblemResponse> toPagedResponse(Page<FastProblem> page) {
+        return PagedResponse.<FastProblemResponse>builder()
+                .content(page.getContent().stream().map(fastProblemMapper::toSummaryResponse).collect(Collectors.toList()))
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
+    }
+
+    private PagedResponse<FastProblemResponse> emptyPage(int page, int size) {
+        return PagedResponse.<FastProblemResponse>builder()
+                .content(List.of())
+                .page(page)
+                .size(size)
+                .totalElements(0)
+                .totalPages(0)
+                .last(true)
+                .build();
     }
 }

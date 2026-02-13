@@ -2,6 +2,7 @@ package com.enterprise.fast.controller;
 
 import com.enterprise.fast.dto.response.DashboardMetricsResponse;
 import com.enterprise.fast.dto.response.FastProblemResponse;
+import com.enterprise.fast.dto.response.PagedResponse;
 import com.enterprise.fast.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,9 +49,11 @@ public class DashboardController {
 
     @GetMapping("/backlog")
     @Operation(summary = "Backlog items (NEW, ASSIGNED) for bi-weekly review; optional region filter")
-    public ResponseEntity<List<FastProblemResponse>> getBacklog(
-            @RequestParam(required = false) String region) {
-        return ResponseEntity.ok(dashboardService.getBacklog(region));
+    public ResponseEntity<PagedResponse<FastProblemResponse>> getBacklog(
+            @RequestParam(required = false) String region,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "200") int size) {
+        return ResponseEntity.ok(dashboardService.getBacklog(region, page, size));
     }
 
     @GetMapping("/upstream")

@@ -37,33 +37,52 @@ function MetricCard({ title, value, subtitle, color = 'emerald', onClick, isSele
   );
 }
 
-export type StatusFilter = 'OPEN' | 'RESOLVED' | 'CLOSED' | null;
+export type StatusFilter = 'OPEN' | 'RESOLVED' | 'CLOSED' | 'ARCHIVED' | null;
 
 interface MetricsCardsProps {
   metrics: {
     totalOpenTickets: number;
     totalResolvedTickets: number;
     totalClosedTickets: number;
+    totalArchivedTickets?: number;
     averageResolutionTimeHours: number | null;
     slaCompliancePercentage: number | null;
   };
   selectedFilter?: StatusFilter;
   onFilterChange?: (filter: StatusFilter) => void;
+  /** When set, Open/Resolved/Closed/Archived card clicks navigate to tickets page with this status filter. */
+  onNavigateToTickets?: (status: 'OPEN' | 'RESOLVED' | 'CLOSED' | 'ARCHIVED') => void;
 }
 
-export default function MetricsCards({ metrics, selectedFilter = null, onFilterChange }: MetricsCardsProps) {
-  const handleOpenClick = () => onFilterChange?.(selectedFilter === 'OPEN' ? null : 'OPEN');
-  const handleResolvedClick = () => onFilterChange?.(selectedFilter === 'RESOLVED' ? null : 'RESOLVED');
-  const handleClosedClick = () => onFilterChange?.(selectedFilter === 'CLOSED' ? null : 'CLOSED');
+export default function MetricsCards({ metrics, selectedFilter = null, onFilterChange, onNavigateToTickets }: MetricsCardsProps) {
+  const handleOpenClick = () => {
+    if (onNavigateToTickets) onNavigateToTickets('OPEN');
+    else onFilterChange?.(selectedFilter === 'OPEN' ? null : 'OPEN');
+  };
+  const handleResolvedClick = () => {
+    if (onNavigateToTickets) onNavigateToTickets('RESOLVED');
+    else onFilterChange?.(selectedFilter === 'RESOLVED' ? null : 'RESOLVED');
+  };
+  const handleClosedClick = () => {
+    if (onNavigateToTickets) onNavigateToTickets('CLOSED');
+    else onFilterChange?.(selectedFilter === 'CLOSED' ? null : 'CLOSED');
+  };
+  const handleArchivedClick = () => {
+    if (onNavigateToTickets) onNavigateToTickets('ARCHIVED');
+    else onFilterChange?.(selectedFilter === 'ARCHIVED' ? null : 'ARCHIVED');
+  };
+
+  const hasCardClick = !!onNavigateToTickets || !!onFilterChange;
+  const totalArchived = metrics.totalArchivedTickets ?? 0;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
       <MetricCard
         title="Open Tickets"
         value={metrics.totalOpenTickets}
         color="amber"
         subtitle="Active problems"
-        onClick={onFilterChange ? handleOpenClick : undefined}
+        onClick={hasCardClick ? handleOpenClick : undefined}
         isSelected={selectedFilter === 'OPEN'}
       />
       <MetricCard
@@ -71,7 +90,7 @@ export default function MetricsCards({ metrics, selectedFilter = null, onFilterC
         value={metrics.totalResolvedTickets}
         color="green"
         subtitle="Awaiting closure"
-        onClick={onFilterChange ? handleResolvedClick : undefined}
+        onClick={hasCardClick ? handleResolvedClick : undefined}
         isSelected={selectedFilter === 'RESOLVED'}
       />
       <MetricCard
@@ -79,8 +98,16 @@ export default function MetricsCards({ metrics, selectedFilter = null, onFilterC
         value={metrics.totalClosedTickets}
         color="sky"
         subtitle="Completed"
-        onClick={onFilterChange ? handleClosedClick : undefined}
+        onClick={hasCardClick ? handleClosedClick : undefined}
         isSelected={selectedFilter === 'CLOSED'}
+      />
+      <MetricCard
+        title="Archived"
+        value={totalArchived}
+        color="sky"
+        subtitle="Archived"
+        onClick={hasCardClick ? handleArchivedClick : undefined}
+        isSelected={selectedFilter === 'ARCHIVED'}
       />
       <MetricCard
         title="Avg Resolution"

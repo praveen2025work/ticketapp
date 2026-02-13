@@ -12,8 +12,11 @@ const ROLES = [
 ];
 
 const QUICK_REF = [
-  { want: 'See overview of tickets and metrics', where: 'Dashboard', who: 'All' },
-  { want: 'See all tickets, search and filter (default: 10 biz days)', where: 'Tickets', who: 'All' },
+  { want: 'See overview of tickets and metrics (SLA, avg resolution)', where: 'Dashboard', who: 'All' },
+  { want: 'See all tickets, search and filter (default: 45 days)', where: 'Tickets', who: 'All' },
+  { want: 'View archived tickets', where: 'Tickets → Status: ARCHIVED, or Dashboard → Archived card', who: 'All' },
+  { want: 'Filter tickets by age, impact, or priority', where: 'Tickets → Age / Min Impact / Priority filters', who: 'All' },
+  { want: 'Return to ticket list with filters preserved', where: 'Ticket detail → ← Back to Tickets', who: 'All' },
   { want: 'Create a new problem', where: 'Create Ticket', who: 'ADMIN' },
   { want: 'Clone an existing ticket', where: 'Ticket detail → Clone ticket', who: 'ADMIN' },
   { want: 'Work on a ticket (edit, move status)', where: 'Ticket detail → Edit / Move to…', who: 'ADMIN, RTB_OWNER, TECH_LEAD, PROJECT_MANAGER' },
@@ -53,7 +56,7 @@ export default function StarterGuidePage() {
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Navigation</h2>
         <ul className="space-y-2 text-slate-700">
-          <li><Link to="/dashboard" className="text-primary hover:underline font-medium">Dashboard</Link> – metrics, charts, quick ticket list</li>
+          <li><Link to="/dashboard" className="text-primary hover:underline font-medium">Dashboard</Link> – Open/Resolved/Closed/Archived counts, SLA compliance, avg resolution time, charts, quick ticket list</li>
           <li><Link to="/tickets" className="text-primary hover:underline font-medium">Tickets</Link> – full list, search, filters, export</li>
           <li><Link to="/tickets/create" className="text-primary hover:underline font-medium">Create Ticket</Link> – new problem (ADMIN)</li>
           <li><Link to="/approvals" className="text-primary hover:underline font-medium">Approvals</Link> – pending approvals (REVIEWER, APPROVER, RTB_OWNER, ADMIN)</li>
@@ -96,7 +99,7 @@ export default function StarterGuidePage() {
         <p className="text-slate-700 mb-3">
           Admin creates a ticket (NEW) → Submits for approval → Reviewer, Approver, and RTB Owner approve (each role must approve) → All three must approve → ASSIGNED →
           RTB Owner assigns to Admin or Tech Lead → Tech Lead/Admin works on fix (IN_PROGRESS → ROOT_CAUSE → FIX_IN_PROGRESS → RESOLVED) →
-          Admin closes (CLOSED). When a ticket is Resolved, a Knowledge Base article is auto-created. If any Reviewer, Approver, or RTB Owner rejects, the ticket moves to REJECTED. Admin can also Close or Reject a ticket from NEW or ASSIGNED.
+          Admin closes (CLOSED). From CLOSED or REJECTED, Admin can move to ARCHIVED. When a ticket is Resolved, a Knowledge Base article is auto-created. If any Reviewer, Approver, or RTB Owner rejects, the ticket moves to REJECTED. Admin can also Close or Reject a ticket from NEW or ASSIGNED.
         </p>
         <p className="text-slate-600 text-sm mb-3">
           <strong>Approval restriction:</strong> Only users linked to the ticket&apos;s Impacted applications (Admin → Users → Applications) can approve or reject that ticket. Admin can approve any ticket.
@@ -115,14 +118,35 @@ export default function StarterGuidePage() {
           <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded">RESOLVED</span>
           <span>→</span>
           <span className="px-2 py-1 bg-slate-200 rounded">CLOSED</span>
+          <span>→</span>
+          <span className="px-2 py-1 bg-slate-300 rounded">ARCHIVED</span>
         </div>
       </section>
 
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">Dashboard & Tickets</h2>
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Dashboard metrics (SLA &amp; completion)</h2>
+        <p className="text-slate-700 mb-3">
+          The Dashboard shows five summary cards: <strong>Open</strong>, <strong>Resolved</strong>, <strong>Closed</strong>, <strong>Archived</strong>, plus <strong>Avg Resolution</strong> and <strong>SLA Compliance</strong>. Clicking Open, Resolved, Closed, or Archived takes you to the ticket list filtered by that status.
+        </p>
+        <ul className="list-disc list-inside space-y-1 text-slate-700 mb-3">
+          <li><strong>Avg Resolution:</strong> Average time (in hours) from ticket creation to resolution, for all resolved/closed tickets. Uses each ticket’s resolved date (or updated date if resolved date is missing). Target is 4 hours; you can set a per-ticket <strong>Target Resolution (Hours)</strong> when creating or editing a ticket.</li>
+          <li><strong>SLA Compliance:</strong> Percentage of resolved/closed tickets that were resolved within their <strong>Target Resolution (Hours)</strong>. Only tickets that have a target set are included. Target is 80% — the card turns green when compliance is ≥80%.</li>
+          <li><strong>Period filter:</strong> When you choose Weekly or Monthly on the Dashboard, Open/Resolved/Closed counts and charts are scoped to that period; Avg Resolution and SLA are computed over resolved tickets in that period.</li>
+        </ul>
+        <p className="text-slate-600 text-sm">
+          Resolution time is measured from <em>created date</em> to <em>resolved date</em> (or updated date). Archived and deleted tickets are excluded from these metrics.
+        </p>
+      </section>
+
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Dashboard &amp; Tickets</h2>
         <ul className="list-disc list-inside space-y-1 text-slate-700 mb-4">
           <li><strong>Dashboard filters:</strong> Filter by Application (matches Impacted applications on tickets), Region (APAC, EMEA, AMER), and period (Overall, Weekly, Monthly).</li>
-          <li><strong>Tickets screen:</strong> Default date range is the last 10 business days. Clear filters resets to that range.</li>
+          <li><strong>Tickets screen:</strong> Default date range is the last 45 days. Clear filters resets to that range.</li>
+          <li><strong>Search:</strong> Case-insensitive search on INC, PRB, PBT ID, title, and description (e.g. &quot;gateway&quot; finds tickets with &quot;gateway&quot; in the title).</li>
+          <li><strong>Filters:</strong> Region, Application, Classification, Status (including OPEN, ARCHIVED), RAG (escalation), From/To Date, Age (min/max days), Min Impact, Priority (1–5).</li>
+          <li><strong>Back to Tickets:</strong> When viewing a ticket, &quot;← Back to Tickets&quot; preserves the filter state you had on the list.</li>
+          <li><strong>Archived tickets:</strong> Closed tickets are auto-archived after 7 days and excluded from the default list. You can view them by choosing <strong>Status → ARCHIVED</strong> in the ticket list or by clicking the Archived card on the Dashboard. Admin can also move a CLOSED or REJECTED ticket to ARCHIVED manually.</li>
           <li><strong>RAG Status (Escalation):</strong> Green (≤15 days), Amber (15–20 days), Red (&gt;20 days). Updated daily for open tickets.</li>
         </ul>
       </section>
