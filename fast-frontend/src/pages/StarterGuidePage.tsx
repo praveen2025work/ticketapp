@@ -17,12 +17,14 @@ const QUICK_REF = [
   { want: 'Create a new problem', where: 'Create Ticket', who: 'ADMIN' },
   { want: 'Clone an existing ticket', where: 'Ticket detail → Clone ticket', who: 'ADMIN' },
   { want: 'Work on a ticket (edit, move status)', where: 'Ticket detail → Edit / Move to…', who: 'ADMIN, RTB_OWNER, TECH_LEAD, PROJECT_MANAGER' },
+  { want: 'Send email to assignee', where: 'Ticket detail → Send email to assignee (if enabled in Settings)', who: 'ADMIN, RTB_OWNER, TECH_LEAD, PROJECT_MANAGER' },
   { want: 'Submit a ticket for approval', where: 'Ticket detail → Submit for Approval', who: 'ADMIN' },
   { want: 'Approve or reject a ticket', where: 'Approvals', who: 'REVIEWER, APPROVER, RTB_OWNER, ADMIN (must be linked to ticket apps)' },
   { want: 'Find past solutions', where: 'Knowledge Base', who: 'All' },
   { want: 'Update a Knowledge Base article', where: 'Knowledge Base → expand article (edit if supported)', who: 'ADMIN, RTB_OWNER, TECH_LEAD' },
   { want: 'See who did what', where: 'Audit Log', who: 'ADMIN only' },
-  { want: 'Manage app settings', where: 'Admin → Settings', who: 'ADMIN only' },
+  { want: 'Manage app settings (incl. email, daily reports)', where: 'Admin → Settings', who: 'ADMIN only' },
+  { want: 'Preview daily report email template', where: 'Admin → Settings → Daily Reports → Preview template', who: 'ADMIN only' },
   { want: 'Register or manage users', where: 'Admin → Users', who: 'ADMIN only' },
   { want: 'Download tickets (CSV)', where: 'Tickets → Export', who: 'All' },
   { want: 'Switch dark/light theme', where: 'Header → theme icon', who: 'All' },
@@ -135,12 +137,27 @@ export default function StarterGuidePage() {
       </section>
 
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Email options & daily report template</h2>
+        <p className="text-slate-700 mb-3">
+          In <Link to="/admin" className="text-primary hover:underline font-medium">Admin → Settings</Link> (ADMIN only) you can configure:
+        </p>
+        <ul className="list-disc list-inside space-y-1 text-slate-700 mb-3">
+          <li><strong>Email (SMTP)</strong> – Host, port, username, password, and From address. Used for sending email to assignees and for daily reports.</li>
+          <li><strong>Daily Reports</strong> – Enable globally and per zone (APAC, EMEA, AMER). Set send time (HH:mm) and comma-separated recipients for each zone. Use <strong>Preview template</strong> to view how the daily report email will look before sending.</li>
+          <li><strong>Ticket Email</strong> – Toggle to allow or disable sending email to the assignee from the ticket detail page.</li>
+        </ul>
+        <p className="text-slate-600 text-sm">
+          The daily report template preview opens in a full-screen view. You can switch zone (APAC/EMEA/AMER), download the HTML, or copy it. Save settings after changing any email options.
+        </p>
+      </section>
+
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Admin area (ADMIN only)</h2>
         <p className="text-slate-700 mb-3">
           From <Link to="/admin" className="text-primary hover:underline font-medium">Admin</Link> you can:
         </p>
         <ul className="list-disc list-inside space-y-1 text-slate-700">
-          <li><strong>Settings</strong> – configure application settings.</li>
+          <li><strong>Settings</strong> – configure application settings, including email (SMTP), daily reports, and ticket email options. Use <strong>Preview template</strong> in Daily Reports to view the report email template.</li>
           <li><strong>Users</strong> – register new users and link them to applications. User–application mapping controls which approval tickets each user can approve.</li>
           <li><strong>Applications</strong> – manage Impacted applications used on tickets.</li>
         </ul>
