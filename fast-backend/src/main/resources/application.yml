@@ -28,7 +28,7 @@ cors:
 # Application Configuration
 app:
   auth:
-    mode: local  # Options: local, bam
+    mode: local  # Options: local, ad (prod/dev/prod-h2), bam
     local:
       default-user: admin  # Default user for local development
   jwt:

@@ -9,8 +9,9 @@ import java.util.Set;
 public final class StatusTransitionValidator {
 
     private static final Map<TicketStatus, Set<TicketStatus>> VALID_TRANSITIONS = Map.of(
-            TicketStatus.NEW, Set.of(TicketStatus.ASSIGNED, TicketStatus.REJECTED, TicketStatus.CLOSED),
-            TicketStatus.ASSIGNED, Set.of(TicketStatus.IN_PROGRESS, TicketStatus.REJECTED, TicketStatus.CLOSED),
+            TicketStatus.BACKLOG, Set.of(TicketStatus.ASSIGNED, TicketStatus.REJECTED, TicketStatus.CLOSED),
+            TicketStatus.ASSIGNED, Set.of(TicketStatus.ACCEPTED, TicketStatus.REJECTED, TicketStatus.CLOSED),
+            TicketStatus.ACCEPTED, Set.of(TicketStatus.IN_PROGRESS, TicketStatus.REJECTED, TicketStatus.CLOSED),
             TicketStatus.IN_PROGRESS, Set.of(TicketStatus.ROOT_CAUSE_IDENTIFIED),
             TicketStatus.ROOT_CAUSE_IDENTIFIED, Set.of(TicketStatus.FIX_IN_PROGRESS),
             TicketStatus.FIX_IN_PROGRESS, Set.of(TicketStatus.RESOLVED),

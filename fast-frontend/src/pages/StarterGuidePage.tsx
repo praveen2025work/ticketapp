@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../shared/context/AuthContext';
+import { MermaidDiagram } from '../components/MermaidDiagram';
 
 const ROLES = [
   { role: 'ADMIN', desc: 'Full access: create/clone tickets, submit for approval, edit, delete, close tickets, register users, settings, Audit Log.' },
@@ -48,7 +49,7 @@ export default function StarterGuidePage() {
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">What is FAST?</h2>
         <p className="text-slate-700">
-          FAST is a problem ticket system. You can record problems, track them through statuses (New → In progress → Resolved → Closed),
+          FAST is a problem ticket system. You can record problems, track them through statuses (Backlog → Assigned → Accepted → In progress → Resolved → Closed),
           get approvals from reviewers, and reuse solutions from the Knowledge Base. Your menu and actions depend on your role.
         </p>
       </section>
@@ -97,17 +98,19 @@ export default function StarterGuidePage() {
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Ticket lifecycle</h2>
         <p className="text-slate-700 mb-3">
-          Admin creates a ticket (NEW) → Submits for approval → Reviewer, Approver, and RTB Owner approve (each role must approve) → All three must approve → ASSIGNED →
-          RTB Owner assigns to Admin or Tech Lead → Tech Lead/Admin works on fix (IN_PROGRESS → ROOT_CAUSE → FIX_IN_PROGRESS → RESOLVED) →
-          Admin closes (CLOSED). From CLOSED or REJECTED, Admin can move to ARCHIVED. When a ticket is Resolved, a Knowledge Base article is auto-created. If any Reviewer, Approver, or RTB Owner rejects, the ticket moves to REJECTED. Admin can also Close or Reject a ticket from NEW or ASSIGNED.
+          Admin creates a ticket (BACKLOG) → Submits for approval → Reviewer, Approver, and RTB Owner approve (each role must approve) → All three must approve → ASSIGNED to Admin →
+          RTB Owner assigns to Admin or Tech Lead → Based on approvals, ticket moves to ACCEPTED → Tech Lead/Admin works on fix (IN_PROGRESS → ROOT_CAUSE → FIX_IN_PROGRESS → RESOLVED) →
+          Admin closes (CLOSED). From CLOSED or REJECTED, Admin can move to ARCHIVED. When a ticket is Resolved, a Knowledge Base article is auto-created. If any Reviewer, Approver, or RTB Owner rejects, the ticket moves to REJECTED. Admin can also Close or Reject a ticket from BACKLOG, ASSIGNED, or ACCEPTED.
         </p>
         <p className="text-slate-600 text-sm mb-3">
           <strong>Approval restriction:</strong> Only users linked to the ticket&apos;s Impacted applications (Admin → Users → Applications) can approve or reject that ticket. Admin can approve any ticket.
         </p>
         <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-          <span className="px-2 py-1 bg-slate-100 rounded">NEW</span>
+          <span className="px-2 py-1 bg-slate-100 rounded">BACKLOG</span>
           <span>→</span>
           <span className="px-2 py-1 bg-slate-100 rounded">ASSIGNED</span>
+          <span>→</span>
+          <span className="px-2 py-1 bg-slate-100 rounded">ACCEPTED</span>
           <span>→</span>
           <span className="px-2 py-1 bg-slate-100 rounded">IN_PROGRESS</span>
           <span>→</span>
@@ -185,6 +188,98 @@ export default function StarterGuidePage() {
           <li><strong>Users</strong> – register new users and link them to applications. User–application mapping controls which approval tickets each user can approve.</li>
           <li><strong>Applications</strong> – manage Impacted applications used on tickets.</li>
         </ul>
+      </section>
+
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Latest changes</h2>
+        <ul className="list-disc list-inside space-y-1 text-slate-700 mb-3">
+          <li><strong>Unified deployment</strong> – Frontend and backend can be packaged as a single JAR. Run <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-sm">mvn package</code>; the UI is built and served from Spring Boot on the same port.</li>
+          <li><strong>AD auth flow (prod/dev/prod-h2)</strong> – The UI calls your AD API directly (Windows Auth), resolves the username, then sends it to the backend. The backend validates against the <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-sm">users</code> table and issues a JWT. No BAM required.</li>
+          <li><strong>Configurable AD URL</strong> – Set <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-sm">adApiUrl</code> in <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-sm">config.json</code> for the AD endpoint. Use <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-sm">authMode: &quot;ad&quot;</code> for prod/dev/prod-h2.</li>
+          <li><strong>Local unchanged</strong> – Local dev still uses X-Authenticated-User header and the dev user switcher. No AD call.</li>
+        </ul>
+      </section>
+
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Authentication &amp; tech details</h2>
+        <h3 className="text-sm font-medium text-slate-700 mb-2">Auth modes</h3>
+        <table className="w-full text-sm text-left border border-slate-200 rounded-lg overflow-hidden mb-4">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="px-4 py-2 font-semibold text-slate-700">Environment</th>
+              <th className="px-4 py-2 font-semibold text-slate-700">Auth mode</th>
+              <th className="px-4 py-2 font-semibold text-slate-700">How it works</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-slate-100"><td className="px-4 py-2 font-medium text-slate-800">local</td><td className="px-4 py-2 text-slate-600">local</td><td className="px-4 py-2 text-slate-600">X-Authenticated-User header, dev user switcher. No AD.</td></tr>
+            <tr className="border-b border-slate-100"><td className="px-4 py-2 font-medium text-slate-800">prod, dev, prod-h2</td><td className="px-4 py-2 text-slate-600">ad</td><td className="px-4 py-2 text-slate-600">UI calls AD API (Windows Auth), resolves username, POST /auth/login → JWT.</td></tr>
+            <tr className="border-b border-slate-100 last:border-0"><td className="px-4 py-2 font-medium text-slate-800">legacy</td><td className="px-4 py-2 text-slate-600">bam</td><td className="px-4 py-2 text-slate-600">BAM SSO token, backend validates and extracts user from BAM/AD.</td></tr>
+          </tbody>
+        </table>
+        <h3 className="text-sm font-medium text-slate-700 mb-2">AD groups &amp; Spring</h3>
+        <ul className="list-disc list-inside space-y-1 text-slate-700 mb-4">
+          <li><strong>users table</strong> – Stores username, role, fullName, region. Lookup is case-insensitive. Usernames typically come from AD <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">samAccountName</code> or <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">userName</code>.</li>
+          <li><strong>Role mapping</strong> – ADMIN adds users and assigns roles (ADMIN, REVIEWER, APPROVER, RTB_OWNER, TECH_LEAD, PROJECT_MANAGER, READ_ONLY). Users not in the table get READ_ONLY. Inactive users are denied.</li>
+          <li><strong>Spring Security</strong> – BamAuthenticationFilter (local/ad/bam), JwtAuthFilter (Bearer token). SecurityConfig defines role-based rules. POST /auth/login is public; all other API paths require auth.</li>
+        </ul>
+        <h3 className="text-sm font-medium text-slate-700 mb-2">Auth flow diagrams</h3>
+
+        <div className="space-y-6">
+          <div>
+            <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Local (localhost / authMode: local)</h4>
+            <MermaidDiagram id="local-flow" chart={`sequenceDiagram
+    participant Browser
+    participant UI as SPA
+    participant BE as Spring Boot
+
+    Browser->>UI: Load app
+    UI->>BE: GET /users/me (X-Authenticated-User)
+    BE->>BE: BamAuthenticationFilter reads header
+    BE->>BE: Lookup users table
+    BE-->>UI: { username, role, fullName, region }
+    UI->>UI: Set user, show role switcher`} />
+          </div>
+
+          <div>
+            <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">AD auth (prod / dev / prod-h2, authMode: ad)</h4>
+            <MermaidDiagram id="ad-flow" chart={`sequenceDiagram
+    participant Browser
+    participant AD as AD API
+    participant UI as SPA
+    participant BE as Spring Boot
+
+    Browser->>AD: GET /api/getADUsers (Windows Auth, withCredentials)
+    AD-->>UI: { userName, samAccountName, ... }
+    UI->>UI: Resolve username
+    UI->>BE: POST /auth/login { username }
+    BE->>BE: Lookup users table
+    alt User exists and active
+        BE-->>UI: { token, username, role, ... }
+        UI->>UI: Store JWT
+        UI->>BE: API calls with Bearer token
+    else User not found
+        BE-->>UI: { token, role: READ_ONLY }
+    end`} />
+          </div>
+
+          <div>
+            <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">BAM SSO (legacy, authMode: bam)</h4>
+            <MermaidDiagram id="bam-flow" chart={`sequenceDiagram
+    participant Browser
+    participant BAM as BAM SSO
+    participant UI as SPA
+    participant BE as Spring Boot
+
+    Browser->>BAM: Windows Auth
+    BAM-->>UI: BAM token
+    UI->>BE: GET /bam/token, then /users/me
+    BE->>BE: BamAuthenticationFilter validates BAM token
+    BE->>BE: Extract username, lookup users table
+    BE-->>UI: User + role
+    UI->>BE: API calls with Bearer token`} />
+          </div>
+        </div>
       </section>
 
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">

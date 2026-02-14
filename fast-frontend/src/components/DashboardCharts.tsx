@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { DashboardMetrics } from '../shared/types';
+import { STATUS_LABELS } from '../shared/types';
 
 const CLASS_COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 const RAG_COLORS = ['#22c55e', '#f59e0b', '#ef4444']; // G, A, R
@@ -44,7 +45,7 @@ export default function DashboardCharts({ metrics, onNavigateToTickets }: Dashbo
 
   const statusData = Object.entries(metrics.ticketsByStatus)
     .filter(([, v]) => v > 0)
-    .map(([statusKey, value]) => ({ name: statusKey.replace(/_/g, ' '), value, filterKey: statusKey }));
+    .map(([statusKey, value]) => ({ name: STATUS_LABELS[statusKey] ?? statusKey.replace(/_/g, ' '), value, filterKey: statusKey }));
 
   const resolutionData = Object.entries(metrics.avgResolutionByRegion).map(([name, value]) => ({
     name,

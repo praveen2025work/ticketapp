@@ -46,6 +46,7 @@ public class FastProblemResponse {
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
     private LocalDateTime resolvedDate;
+    private LocalDateTime inProgressDate;
     private List<ApprovalResponse> approvalRecords;
     private List<IncidentLinkResponse> incidentLinks;
     private List<FastProblemLinkResponse> links;

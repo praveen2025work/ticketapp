@@ -56,8 +56,9 @@ public final class FastProblemSpecification {
             }
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("deleted"), false));
-            // When filtering by ARCHIVED we include archived tickets; otherwise exclude them
-            boolean filterByArchived = "ARCHIVED".equalsIgnoreCase(statusFilter);
+            // When filtering by ARCHIVED or RESOLVED_CLOSED_ARCHIVED we include archived tickets; otherwise exclude them
+            boolean filterByArchived = "ARCHIVED".equalsIgnoreCase(statusFilter)
+                    || "RESOLVED_CLOSED_ARCHIVED".equalsIgnoreCase(statusFilter);
             if (!filterByArchived) {
                 predicates.add(cb.equal(root.get("archived"), false));
             }
@@ -138,6 +139,12 @@ public final class FastProblemSpecification {
                             cb.equal(statusField, TicketStatus.ARCHIVED),
                             cb.equal(root.get("archived"), true)
                     ));
+                } else if ("BACKLOG_AND_ASSIGNED".equalsIgnoreCase(statusFilter)) {
+                    predicates.add(statusField.in(Set.of(TicketStatus.BACKLOG, TicketStatus.ASSIGNED)));
+                } else if ("IN_PROGRESS_GROUP".equalsIgnoreCase(statusFilter)) {
+                    predicates.add(statusField.in(Set.of(TicketStatus.IN_PROGRESS, TicketStatus.ROOT_CAUSE_IDENTIFIED, TicketStatus.FIX_IN_PROGRESS)));
+                } else if ("RESOLVED_CLOSED_ARCHIVED".equalsIgnoreCase(statusFilter)) {
+                    predicates.add(statusField.in(Set.of(TicketStatus.RESOLVED, TicketStatus.CLOSED, TicketStatus.ARCHIVED)));
                 } else {
                     try {
                         TicketStatus status = TicketStatus.valueOf(statusFilter.toUpperCase());

@@ -15,7 +15,7 @@ interface TicketFormProps {
     isLoading?: boolean;
 }
 
-const ASSIGNED_OR_LATER: TicketStatus[] = ['ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'];
+const ASSIGNED_OR_LATER: TicketStatus[] = ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'];
 
 export default function TicketForm({ initialData, mode = 'create', ticketStatus, onSubmit, isLoading }: TicketFormProps) {
     const [formData, setFormData] = useState<CreateFastProblemRequest & Partial<UpdateFastProblemRequest>>({

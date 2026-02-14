@@ -60,7 +60,7 @@ class FastProblemServiceImplTest {
                 .id(1L)
                 .title("Test Problem")
                 .classification(Classification.A)
-                .status(TicketStatus.NEW)
+                .status(TicketStatus.BACKLOG)
                 .deleted(false)
                 .build();
         problem.getRegions().add(com.enterprise.fast.domain.entity.FastProblemRegion.builder()
@@ -70,7 +70,7 @@ class FastProblemServiceImplTest {
                 .title("Test Problem")
                 .classification("A")
                 .regionalCodes(List.of("AMER"))
-                .status("NEW")
+                .status("BACKLOG")
                 .build();
     }
 
@@ -116,7 +116,7 @@ class FastProblemServiceImplTest {
         FastProblemResponse result = service.updateStatus(1L, "ASSIGNED", "admin");
 
         assertThat(result).isNotNull();
-        verify(auditLogService).logAction(eq(1L), eq("STATUS_CHANGED"), eq("admin"), eq("status"), eq("NEW"), eq("ASSIGNED"));
+        verify(auditLogService).logAction(eq(1L), eq("STATUS_CHANGED"), eq("admin"), eq("status"), eq("BACKLOG"), eq("ASSIGNED"));
     }
 
     @Test

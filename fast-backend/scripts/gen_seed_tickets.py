@@ -12,7 +12,7 @@ apps = [
     "API Gateway", "Config Service",
 ]
 regions = ["APAC", "EMEA", "AMER"]
-statuses = ["NEW", "ASSIGNED", "IN_PROGRESS", "ROOT_CAUSE_IDENTIFIED", "FIX_IN_PROGRESS", "RESOLVED", "CLOSED"]
+statuses = ["BACKLOG", "ASSIGNED", "ACCEPTED", "IN_PROGRESS", "ROOT_CAUSE_IDENTIFIED", "FIX_IN_PROGRESS", "RESOLVED", "CLOSED"]
 classes = ["A", "R", "P"]
 
 lines = []
@@ -34,7 +34,7 @@ for i in range(1, 101):
     root = f"Root cause for ticket {i} (config or dependency)." if status in ("RESOLVED", "CLOSED") else None
     work = "Workaround: use alternate endpoint or retry." if status in ("IN_PROGRESS", "RESOLVED", "CLOSED") else None
     perm = "Permanent fix deployed." if status == "CLOSED" else None
-    assigned = "admin" if status != "NEW" else None
+    assigned = "admin" if status not in ("BACKLOG",) else None
     assigned_s = "NULL" if not assigned else "'admin'"
     group = "Platform Team" if i % 2 else "App Support"
     confluence = f"https://wiki.example.com/ticket-{i}" if i % 5 == 0 else None

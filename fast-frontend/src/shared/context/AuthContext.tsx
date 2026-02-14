@@ -64,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      // 0. Runtime config: load config.json first (apiBaseUrl + authMode)
-      let config: { apiBaseUrl?: string; authMode?: string } = {};
+      // 0. Runtime config: load config.json first (apiBaseUrl, authMode, adApiUrl)
+      let config: { apiBaseUrl?: string; authMode?: string; adApiUrl?: string } = {};
       try {
         const configRes = await fetch('/config.json', { cache: 'no-store' });
         if (!cancelled && configRes.ok) {
@@ -97,7 +97,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await fetchCurrentUser();
         return;
       }
-      // 4. BAM SSO
+      // 4. AD auth (prod/dev/prod-h2): frontend calls AD, resolves username, POST /auth/login
+      if (config?.authMode === 'ad' && config?.adApiUrl) {
+        try {
+          const adRes = await fetch(config.adApiUrl, { credentials: 'include', cache: 'no-store' });
+          if (!cancelled && !adRes.ok) {
+            console.error('AD fetch failed:', adRes.status);
+            setUser(null);
+            return;
+          }
+          const adData = await adRes.json();
+          const username = adData?.userName ?? adData?.samAccountName ?? '';
+          if (cancelled || !username) {
+            if (!username) setUser(null);
+            return;
+          }
+          const loginRes = await authApi.login(username);
+          if (cancelled) return;
+          setStoredToken(loginRes.token);
+          setUser({
+            username: loginRes.username,
+            fullName: loginRes.fullName ?? loginRes.username,
+            role: loginRes.role,
+            region: loginRes.region ?? undefined,
+            displayName: adData?.displayName,
+            emailAddress: adData?.emailAddress,
+            employeeId: adData?.employeeId,
+          });
+        } catch (err) {
+          console.error('AD auth failed:', err);
+          setUser(null);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+        return;
+      }
+      // 5. BAM SSO
       try {
         const redirectURL = typeof window !== 'undefined' ? window.location.origin + '/api' : '';
         const bam = await authApi.getBamToken(BAM_APP_NAME, redirectURL);

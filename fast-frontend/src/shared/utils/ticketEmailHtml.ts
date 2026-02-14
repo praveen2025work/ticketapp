@@ -9,10 +9,11 @@ const esc = (s: string) =>
 
 const nl2br = (s: string) => esc(s).replace(/\n/g, '<br>\n');
 
-const statusFlow = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'];
+const statusFlow = ['BACKLOG', 'ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'];
 const statusLabels: Record<string, string> = {
-  NEW: 'New',
+  BACKLOG: 'Backlog',
   ASSIGNED: 'Assigned',
+  ACCEPTED: 'Accepted',
   IN_PROGRESS: 'In Progress',
   ROOT_CAUSE_IDENTIFIED: 'RCA Done',
   FIX_IN_PROGRESS: 'Fix In Progress',
@@ -104,7 +105,7 @@ export function getTicketEmailHtml(ticket: FastProblem, ticketUrl?: string): str
   const classLabel = classification === 'A' ? 'A - Approve' : classification === 'R' ? 'R - Review' : 'P - Priority';
 
   // Workflow timeline
-  const currentStatus = ticket.status ?? 'NEW';
+  const currentStatus = ticket.status ?? 'BACKLOG';
   const isRejected = currentStatus === 'REJECTED';
   const currentIndex = statusFlow.indexOf(currentStatus);
   const workflowSteps = isRejected

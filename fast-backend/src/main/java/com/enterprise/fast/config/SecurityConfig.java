@@ -44,6 +44,9 @@ public class SecurityConfig {
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/v1/bam/**").permitAll() // BAM SSO endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll() // AD auth: username -> JWT
+                        // Static SPA assets (unified deployment)
+                        .requestMatchers("/", "/index.html", "/assets/**", "/fastlogo.svg", "/config.json", "/favicon.ico").permitAll()
 
                         // Allow all authenticated users (including READ_ONLY) to view data
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").authenticated()

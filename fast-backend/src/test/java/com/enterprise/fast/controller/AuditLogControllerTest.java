@@ -36,7 +36,7 @@ class AuditLogControllerTest {
                 .action("CREATED")
                 .performedBy("user1")
                 .fieldChanged("status")
-                .oldValue("NEW")
+                .oldValue("BACKLOG")
                 .newValue("ASSIGNED")
                 .timestamp(LocalDateTime.now())
                 .build();

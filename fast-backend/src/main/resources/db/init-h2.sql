@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS fast_problem (
     ticket_age_days INTEGER DEFAULT 0,
     rag_status VARCHAR(5) DEFAULT 'G',
     status_indicator VARCHAR(10) DEFAULT 'R16',
-    status VARCHAR(30) DEFAULT 'NEW',
+    status VARCHAR(30) DEFAULT 'BACKLOG',
     priority_score DOUBLE DEFAULT 0.0,
     priority INTEGER DEFAULT 3,
     target_resolution_hours INTEGER DEFAULT 4,
@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS fast_problem (
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     resolved_date TIMESTAMP,
+    in_progress_date TIMESTAMP,
     closed_date TIMESTAMP,
     deleted BOOLEAN DEFAULT FALSE,
     archived BOOLEAN DEFAULT FALSE

@@ -30,7 +30,7 @@ public interface DashboardService {
     /** Top 10 open tickets by impact (RAG R first, then A, then priority/age/impact). Optional region filter for Finance Daily Production. */
     List<FastProblemResponse> getTop10(String region);
 
-    /** Backlog: open tickets not yet In Progress (NEW, ASSIGNED). */
+    /** Backlog: open tickets not yet In Progress (BACKLOG, ASSIGNED). */
     PagedResponse<FastProblemResponse> getBacklog(String region, int page, int size);
 
     /** Upstream items: tickets with at least one JIRA or ServiceFirst link. Optional filter by linkType (JIRA, SERVICEFIRST). */

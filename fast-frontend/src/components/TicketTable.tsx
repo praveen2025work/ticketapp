@@ -1,4 +1,5 @@
 import type { FastProblem, TicketLink } from '../shared/types';
+import { STATUS_LABELS } from '../shared/types';
 import ClassificationBadge from './ClassificationBadge';
 import RagBadge from './RagBadge';
 import { Link } from 'react-router-dom';
@@ -49,8 +50,9 @@ interface TicketTableProps {
 
 function TicketTableInner({ tickets, showUpstreamLinks, backFilters }: { tickets: FastProblem[]; showUpstreamLinks?: boolean; backFilters?: BackFilters }) {
   const statusColors: Record<string, string> = {
-    NEW: 'bg-sky-100 text-sky-800',
+    BACKLOG: 'bg-sky-100 text-sky-800',
     ASSIGNED: 'bg-violet-100 text-violet-800',
+    ACCEPTED: 'bg-teal-100 text-teal-800',
     IN_PROGRESS: 'bg-amber-100 text-amber-800',
     ROOT_CAUSE_IDENTIFIED: 'bg-orange-100 text-orange-800',
     FIX_IN_PROGRESS: 'bg-amber-100 text-amber-800',
@@ -172,7 +174,7 @@ function TicketTableInner({ tickets, showUpstreamLinks, backFilters }: { tickets
                     <span
                       className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-lg ${statusColors[ticket.status] || 'bg-slate-100 text-slate-700'}`}
                     >
-                      {ticket.status.replace(/_/g, ' ')}
+                      {STATUS_LABELS[ticket.status] ?? ticket.status.replace(/_/g, ' ')}
                     </span>
                   </span>
                 </td>

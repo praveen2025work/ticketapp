@@ -36,12 +36,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.enterprise.fast.domain.enums.TicketStatus.CLOSED;
-import static com.enterprise.fast.domain.enums.TicketStatus.RESOLVED;
+import static com.enterprise.fast.domain.enums.TicketStatus.ACCEPTED;
 import static com.enterprise.fast.domain.enums.TicketStatus.ASSIGNED;
+import static com.enterprise.fast.domain.enums.TicketStatus.BACKLOG;
+import static com.enterprise.fast.domain.enums.TicketStatus.CLOSED;
 import static com.enterprise.fast.domain.enums.TicketStatus.FIX_IN_PROGRESS;
 import static com.enterprise.fast.domain.enums.TicketStatus.IN_PROGRESS;
-import static com.enterprise.fast.domain.enums.TicketStatus.NEW;
+import static com.enterprise.fast.domain.enums.TicketStatus.RESOLVED;
 import static com.enterprise.fast.domain.enums.TicketStatus.ROOT_CAUSE_IDENTIFIED;
 
 @Service
@@ -56,10 +57,10 @@ public class DashboardServiceImpl implements DashboardService {
     private final FastProblemMapper fastProblemMapper;
 
     private static final Set<TicketStatus> OPEN_STATUSES = Set.of(
-            NEW, ASSIGNED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS);
+            BACKLOG, ASSIGNED, ACCEPTED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS);
     private static final List<TicketStatus> OPEN_STATUS_LIST = List.of(
-            NEW, ASSIGNED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS);
-    private static final List<TicketStatus> BACKLOG_STATUS_LIST = List.of(NEW, ASSIGNED);
+            BACKLOG, ASSIGNED, ACCEPTED, IN_PROGRESS, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS);
+    private static final List<TicketStatus> BACKLOG_STATUS_LIST = List.of(BACKLOG, ASSIGNED);
     private static final List<TicketStatus> RESOLVED_STATUS_LIST = List.of(RESOLVED, CLOSED);
     private static final int RESOLVED_PAGE_SIZE = 1000;
 
@@ -126,8 +127,9 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     private DashboardMetricsResponse getOverallMetricsUnfiltered() {
-        long totalOpen = problemRepository.countByStatus(TicketStatus.NEW)
+        long totalOpen = problemRepository.countByStatus(TicketStatus.BACKLOG)
                 + problemRepository.countByStatus(TicketStatus.ASSIGNED)
+                + problemRepository.countByStatus(TicketStatus.ACCEPTED)
                 + problemRepository.countByStatus(TicketStatus.IN_PROGRESS)
                 + problemRepository.countByStatus(TicketStatus.ROOT_CAUSE_IDENTIFIED)
                 + problemRepository.countByStatus(TicketStatus.FIX_IN_PROGRESS);
@@ -248,6 +250,11 @@ public class DashboardServiceImpl implements DashboardService {
         return fp.getResolvedDate() != null ? fp.getResolvedDate() : fp.getUpdatedDate();
     }
 
+    /** SLA start: from when status moved to IN_PROGRESS; fallback to createdDate for older tickets without in_progress_date. */
+    private static LocalDateTime resolutionStartTime(FastProblem fp) {
+        return fp.getInProgressDate() != null ? fp.getInProgressDate() : fp.getCreatedDate();
+    }
+
     private ResolvedMetrics computeResolvedMetrics(Specification<FastProblem> resolvedSpec) {
         double totalHours = 0.0;
         int counted = 0;
@@ -264,12 +271,12 @@ public class DashboardServiceImpl implements DashboardService {
         do {
             batch = problemRepository.findAll(resolvedSpec, PageRequest.of(page, RESOLVED_PAGE_SIZE, Sort.by("id")));
             for (FastProblem fp : batch.getContent()) {
-                LocalDateTime created = fp.getCreatedDate();
+                LocalDateTime start = resolutionStartTime(fp);
                 LocalDateTime end = resolutionEndTime(fp);
-                if (created == null || end == null) {
+                if (start == null || end == null) {
                     continue;
                 }
-                double hours = Duration.between(created, end).toMinutes() / 60.0;
+                double hours = Duration.between(start, end).toMinutes() / 60.0;
                 totalHours += hours;
                 counted++;
                 if (fp.getTargetResolutionHours() != null) {

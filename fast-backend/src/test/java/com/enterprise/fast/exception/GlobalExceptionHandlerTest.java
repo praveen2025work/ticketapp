@@ -39,7 +39,7 @@ class GlobalExceptionHandlerTest {
     @Test
     void handleInvalidStateTransition_Returns400() {
         InvalidStateTransitionException ex = new InvalidStateTransitionException(
-                com.enterprise.fast.domain.enums.TicketStatus.NEW,
+                com.enterprise.fast.domain.enums.TicketStatus.BACKLOG,
                 com.enterprise.fast.domain.enums.TicketStatus.RESOLVED);
         ResponseEntity<ApiErrorResponse> res = handler.handleInvalidStateTransition(ex, request);
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

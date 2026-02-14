@@ -102,9 +102,9 @@ public class LdapAuthenticationFilter extends OncePerRequestFilter {
             username = request.getHeader("X-Remote-User");
         }
 
-        // Clean up domain prefix if present (e.g., DOMAIN\\username -> username)
-        if (username != null && username.contains("\\\\")) {
-            username = username.substring(username.lastIndexOf("\\\\") + 1);
+        // Clean up domain prefix if present
+        if (username != null && username.contains("\\")) {
+            username = username.substring(username.lastIndexOf("\\") + 1);
         }
 
         return username;

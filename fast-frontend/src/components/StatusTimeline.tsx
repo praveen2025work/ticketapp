@@ -1,12 +1,13 @@
 import type { TicketStatus } from '../shared/types';
 
 const statusFlow: TicketStatus[] = [
-  'NEW', 'ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'
+  'BACKLOG', 'ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'
 ];
 
 const statusLabels: Record<string, string> = {
-  NEW: 'New',
+  BACKLOG: 'Backlog',
   ASSIGNED: 'Assigned',
+  ACCEPTED: 'Accepted',
   IN_PROGRESS: 'In Progress',
   ROOT_CAUSE_IDENTIFIED: 'RCA Done',
   FIX_IN_PROGRESS: 'Fix In Progress',

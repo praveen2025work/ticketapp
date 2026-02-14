@@ -9,7 +9,7 @@ class InvalidStateTransitionExceptionTest {
 
     @Test
     void constructor_SetsMessage() {
-        InvalidStateTransitionException ex = new InvalidStateTransitionException(TicketStatus.NEW, TicketStatus.RESOLVED);
-        assertThat(ex.getMessage()).contains("NEW").contains("RESOLVED");
+        InvalidStateTransitionException ex = new InvalidStateTransitionException(TicketStatus.BACKLOG, TicketStatus.RESOLVED);
+        assertThat(ex.getMessage()).contains("BACKLOG").contains("RESOLVED");
     }
 }

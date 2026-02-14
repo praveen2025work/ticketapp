@@ -86,7 +86,7 @@ public class FastProblem {
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     @Builder.Default
-    private TicketStatus status = TicketStatus.NEW;
+    private TicketStatus status = TicketStatus.BACKLOG;
 
     @Column(name = "priority_score")
     @Builder.Default
@@ -142,6 +142,10 @@ public class FastProblem {
 
     @Column(name = "resolved_date")
     private LocalDateTime resolvedDate;
+
+    /** Set when status first moves to IN_PROGRESS (from ACCEPTED). Used as SLA start for resolution time. */
+    @Column(name = "in_progress_date")
+    private LocalDateTime inProgressDate;
 
     /** Set when status becomes CLOSED; used to archive after 7 days. */
     @Column(name = "closed_date")

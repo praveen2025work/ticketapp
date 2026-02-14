@@ -123,7 +123,7 @@ Only **RTB_TEAM**, **SERVICE_DESK**, and **ADMIN** can create tickets.
    - Optional: ServiceNow incident/problem numbers, PBT ID, affected application, anticipated benefits, Confluence link, etc.
 3. Click **Submit** (or the main submit button on the form).
 
-You are then taken to the new ticket’s **detail** page. The ticket starts in status **NEW**.
+You are then taken to the new ticket’s **detail** page. The ticket starts in status **BACKLOG**.
 
 ---
 
@@ -131,7 +131,7 @@ You are then taken to the new ticket’s **detail** page. The ticket starts in s
 
 On a ticket’s detail page you see:
 
-- **Title**, **ID**, **status**, and a **status timeline** (e.g. New → Assigned → In progress → … → Resolved → Closed).
+- **Title**, **ID**, **status**, and a **status timeline** (e.g. Backlog → Assigned → Accepted → In progress → … → Resolved → Closed).
 - **Problem details**: description, anticipated benefits.
 - **Resolution details**: root cause, workaround, permanent fix (filled in as the ticket is worked).
 - **Approval history**: who approved or rejected and when.
@@ -143,19 +143,19 @@ On a ticket’s detail page you see:
 **Buttons you may see (depending on your role):**
 
 - **Submit for Approval**  
-  - Visible when the ticket is **NEW** and you are RTB_TEAM, SERVICE_DESK, or ADMIN.  
+  - Visible when the ticket is **BACKLOG** and you are RTB_TEAM, SERVICE_DESK, or ADMIN.  
   - Use this when the ticket is ready for a Reviewer to approve. It moves the ticket into the approval process.
 
 - **Move to &lt;next status&gt;**  
   - Visible for TECHNICIAN, PROBLEM_MANAGER, or ADMIN.  
   - Moves the ticket to the next step, e.g.  
-    **Assigned** → **In progress** → **Root cause identified** → **Fix in progress** → **Resolved** → **Closed**.
+    **Assigned** → **Accepted** → **In progress** → **Root cause identified** → **Fix in progress** → **Resolved** → **Closed**.
 
 - **Edit**  
   - TECHNICIAN, PROBLEM_MANAGER, or ADMIN can open the **Edit** form to change title, description, root cause, workaround, permanent fix, assignment, Confluence link, etc.
 
 **Lifecycle in short:**  
-Create (NEW) → Submit for approval → Reviewer approves → Technician/PM moves through statuses and fills root cause/workaround/permanent fix → **Resolved** → **Closed**. When a ticket is marked **Resolved**, the system can automatically create a **Knowledge Base** article from it (see below).
+Create (BACKLOG) → Submit for approval → Reviewer, Approver, RTB Owner approve → **Assigned** to Admin → **Accepted** → Technician/PM moves through statuses and fills root cause/workaround/permanent fix → **Resolved** → **Closed**. When a ticket is marked **Resolved**, the system can automatically create a **Knowledge Base** article from it (see below).
 
 ---
 

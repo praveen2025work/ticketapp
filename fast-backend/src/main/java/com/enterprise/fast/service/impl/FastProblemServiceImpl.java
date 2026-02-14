@@ -319,18 +319,23 @@ public class FastProblemServiceImpl implements FastProblemService {
 
         StatusTransitionValidator.validate(currentStatus, targetStatus);
 
-        // Only ADMIN can close or reject a ticket directly (NEW/ASSIGNED -> CLOSED or REJECTED)
+        // Only ADMIN can close or reject a ticket directly (BACKLOG/ASSIGNED/ACCEPTED -> CLOSED or REJECTED)
         if ((targetStatus == TicketStatus.CLOSED || targetStatus == TicketStatus.REJECTED)
-                && (currentStatus == TicketStatus.NEW || currentStatus == TicketStatus.ASSIGNED)) {
+                && (currentStatus == TicketStatus.BACKLOG || currentStatus == TicketStatus.ASSIGNED || currentStatus == TicketStatus.ACCEPTED)) {
             User user = userRepository.findByUsernameIgnoreCase(username)
                     .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
             if (user.getRole() != UserRole.ADMIN) {
-                throw new IllegalArgumentException("Only ADMIN can close or reject a ticket from NEW or ASSIGNED");
+                throw new IllegalArgumentException("Only ADMIN can close or reject a ticket from BACKLOG, ASSIGNED, or ACCEPTED");
             }
         }
 
         String oldStatus = currentStatus.name();
         problem.setStatus(targetStatus);
+
+        // SLA clock starts when status moves to IN_PROGRESS (from ACCEPTED); set once
+        if (targetStatus == TicketStatus.IN_PROGRESS && problem.getInProgressDate() == null) {
+            problem.setInProgressDate(LocalDateTime.now());
+        }
 
         // Handle resolved status
         if (targetStatus == TicketStatus.RESOLVED) {

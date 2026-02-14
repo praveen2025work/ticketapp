@@ -48,7 +48,7 @@ public class DashboardController {
     }
 
     @GetMapping("/backlog")
-    @Operation(summary = "Backlog items (NEW, ASSIGNED) for bi-weekly review; optional region filter")
+    @Operation(summary = "Backlog items (BACKLOG, ASSIGNED) for bi-weekly review; optional region filter")
     public ResponseEntity<PagedResponse<FastProblemResponse>> getBacklog(
             @RequestParam(required = false) String region,
             @RequestParam(defaultValue = "0") int page,

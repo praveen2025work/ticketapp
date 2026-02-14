@@ -4,8 +4,41 @@ export type Classification = 'A' | 'R' | 'P';
 export type RagStatus = 'G' | 'A' | 'R';
 export type RegionalCode = 'APAC' | 'EMEA' | 'AMER';
 export type StatusIndicator = 'R16' | 'B16';
-export type TicketStatus = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'ROOT_CAUSE_IDENTIFIED' | 'FIX_IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED' | 'ARCHIVED';
+export type TicketStatus = 'BACKLOG' | 'ASSIGNED' | 'ACCEPTED' | 'IN_PROGRESS' | 'ROOT_CAUSE_IDENTIFIED' | 'FIX_IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED' | 'ARCHIVED';
 export type ApprovalDecision = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+/** Status options for filter dropdowns (value + display label). Order matches workflow. */
+export const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'All' },
+  { value: 'BACKLOG_AND_ASSIGNED', label: 'Backlog (Backlog, Assigned)' },
+  { value: 'BACKLOG', label: 'Backlog' },
+  { value: 'ASSIGNED', label: 'Assigned' },
+  { value: 'ACCEPTED', label: 'Accepted' },
+  { value: 'IN_PROGRESS_GROUP', label: 'In Progress (In Progress, RCA Done, Fix In Progress)' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'ROOT_CAUSE_IDENTIFIED', label: 'RCA Done' },
+  { value: 'FIX_IN_PROGRESS', label: 'Fix In Progress' },
+  { value: 'RESOLVED_CLOSED_ARCHIVED', label: 'Resolved / Closed / Archived' },
+  { value: 'RESOLVED', label: 'Resolved' },
+  { value: 'CLOSED', label: 'Closed' },
+  { value: 'REJECTED', label: 'Rejected' },
+  { value: 'ARCHIVED', label: 'Archived' },
+  { value: 'OPEN', label: 'Open (all)' },
+];
+
+/** Human-readable label for any ticket status. */
+export const STATUS_LABELS: Record<string, string> = {
+  BACKLOG: 'Backlog',
+  ASSIGNED: 'Assigned',
+  ACCEPTED: 'Accepted',
+  IN_PROGRESS: 'In Progress',
+  ROOT_CAUSE_IDENTIFIED: 'Root Cause Identified',
+  FIX_IN_PROGRESS: 'Fix In Progress',
+  RESOLVED: 'Resolved',
+  CLOSED: 'Closed',
+  REJECTED: 'Rejected',
+  ARCHIVED: 'Archived',
+};
 export type UserRole = 'ADMIN' | 'REVIEWER' | 'APPROVER' | 'RTB_OWNER' | 'TECH_LEAD' | 'PROJECT_MANAGER' | 'READ_ONLY';
 
 export interface ApplicationRef {

@@ -1,3 +1,5 @@
+import { STATUS_LABELS } from '../../shared/types';
+
 interface StatusChartProps {
   data: Record<string, number>;
 }
@@ -12,7 +14,7 @@ export default function StatusChart({ data }: StatusChartProps) {
           className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm"
           role="listitem"
         >
-          <span className="text-gray-600">{status.replace(/_/g, ' ')}</span>
+          <span className="text-gray-600">{STATUS_LABELS[status] ?? status.replace(/_/g, ' ')}</span>
           <span className="font-bold text-gray-900">{count}</span>
         </div>
       ))}

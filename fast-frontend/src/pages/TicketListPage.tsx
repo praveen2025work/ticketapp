@@ -9,6 +9,7 @@ import { applicationsApi } from '../shared/api/applicationsApi';
 import { getApiErrorMessage } from '../shared/utils/apiError';
 import { getDefaultTicketDateRange } from '../shared/utils/dateUtils';
 import type { FastProblem, PagedResponse, Classification, RegionalCode } from '../shared/types';
+import { STATUS_FILTER_OPTIONS } from '../shared/types';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../shared/context/AuthContext';
 import TicketTable from '../components/TicketTable';
@@ -282,15 +283,11 @@ export default function TicketListPage() {
               onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
               className="px-3.5 py-2 border border-slate-200 dark:border-slate-500 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/50 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
             >
-              <option value="">All</option>
-              <option value="NEW">NEW</option>
-              <option value="ASSIGNED">ASSIGNED</option>
-              <option value="IN_PROGRESS">IN PROGRESS</option>
-              <option value="OPEN">OPEN</option>
-              <option value="RESOLVED">RESOLVED</option>
-              <option value="CLOSED">CLOSED</option>
-              <option value="REJECTED">REJECTED</option>
-              <option value="ARCHIVED">ARCHIVED</option>
+              {STATUS_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value || 'all'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
           <div>

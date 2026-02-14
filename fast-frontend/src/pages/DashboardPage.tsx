@@ -8,7 +8,7 @@ import type { FastProblem, PagedResponse, RegionalCode } from '../shared/types';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../shared/context/AuthContext';
 import MetricsCards from '../components/MetricsCards';
-import type { StatusFilter } from '../components/MetricsCards';
+import type { DashboardTileFilter } from '../components/MetricsCards';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DashboardCharts from '../components/DashboardCharts';
 import TicketTable, { type BackFilters } from '../components/TicketTable';
@@ -20,7 +20,7 @@ const BACKLOG_PAGE_SIZE = 100;
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [selectedFilter, setSelectedFilter] = useState<StatusFilter>(null);
+  const [selectedFilter, setSelectedFilter] = useState<DashboardTileFilter>(null);
   const [applicationFilter, setApplicationFilter] = useState('');
   const [regionFilter, setRegionFilter] = useState('');
   const [periodFilter, setPeriodFilter] = useState<'overall' | 'weekly' | 'monthly'>('overall');
@@ -46,10 +46,10 @@ export default function DashboardPage() {
 
   const hasTicketFilters = !!applicationFilter || !!regionFilter;
   const ticketFilters = {
-    ...(selectedFilter === 'OPEN' && { status: 'OPEN' as const }),
-    ...(selectedFilter === 'RESOLVED' && { status: 'RESOLVED' as const }),
-    ...(selectedFilter === 'CLOSED' && { status: 'CLOSED' as const }),
-    ...(selectedFilter === 'ARCHIVED' && { status: 'ARCHIVED' as const }),
+    ...(selectedFilter === 'BACKLOG_AND_ASSIGNED' && { status: 'BACKLOG_AND_ASSIGNED' as const }),
+    ...(selectedFilter === 'ACCEPTED' && { status: 'ACCEPTED' as const }),
+    ...(selectedFilter === 'IN_PROGRESS_GROUP' && { status: 'IN_PROGRESS_GROUP' as const }),
+    ...(selectedFilter === 'RESOLVED_CLOSED_ARCHIVED' && { status: 'RESOLVED_CLOSED_ARCHIVED' as const }),
     ...(applicationFilter && { application: applicationFilter }),
     ...(regionFilter && { region: regionFilter }),
   };
@@ -97,14 +97,14 @@ export default function DashboardPage() {
   }
 
   const sectionTitle =
-    selectedFilter === 'OPEN'
-      ? 'Open Tickets'
-      : selectedFilter === 'RESOLVED'
-        ? 'Resolved Tickets'
-        : selectedFilter === 'CLOSED'
-          ? 'Closed Tickets'
-          : selectedFilter === 'ARCHIVED'
-            ? 'Archived Tickets'
+    selectedFilter === 'BACKLOG_AND_ASSIGNED'
+      ? 'Backlog (Backlog, Assigned)'
+      : selectedFilter === 'ACCEPTED'
+        ? 'Accepted Tickets'
+        : selectedFilter === 'IN_PROGRESS_GROUP'
+          ? 'In Progress (In Progress, RCA Done, Fix In Progress)'
+          : selectedFilter === 'RESOLVED_CLOSED_ARCHIVED'
+            ? 'Resolved / Closed / Archived'
             : '';
   const filterHint = hasTicketFilters
     ? [applicationFilter, regionFilter].filter(Boolean).join(' · ')
@@ -181,7 +181,7 @@ export default function DashboardPage() {
           onNavigateToTickets={
             isReadOnly
               ? undefined
-              : (status) => {
+              : (status: 'BACKLOG_AND_ASSIGNED' | 'ACCEPTED' | 'IN_PROGRESS_GROUP' | 'RESOLVED_CLOSED_ARCHIVED') => {
                   const params = new URLSearchParams();
                   params.set('status', status);
                   if (regionFilter) params.set('region', regionFilter);
@@ -225,7 +225,7 @@ export default function DashboardPage() {
       {backlogItems.length > 0 && (
         <div className="animate-slide-up">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">Backlog (bi-weekly review)</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Tickets not yet In Progress (NEW, ASSIGNED).</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Tickets not yet In Progress (BACKLOG, ASSIGNED).</p>
           <div className="bg-white dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-600 overflow-hidden">
             {backlogTotalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">

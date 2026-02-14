@@ -37,77 +37,91 @@ function MetricCard({ title, value, subtitle, color = 'emerald', onClick, isSele
   );
 }
 
-export type StatusFilter = 'OPEN' | 'RESOLVED' | 'CLOSED' | 'ARCHIVED' | null;
+export type DashboardTileFilter = 'BACKLOG_AND_ASSIGNED' | 'ACCEPTED' | 'IN_PROGRESS_GROUP' | 'RESOLVED_CLOSED_ARCHIVED' | null;
+
+/** @deprecated Use DashboardTileFilter for new dashboard tiles. */
+export type StatusFilter = DashboardTileFilter;
 
 interface MetricsCardsProps {
   metrics: {
-    totalOpenTickets: number;
-    totalResolvedTickets: number;
-    totalClosedTickets: number;
+    totalOpenTickets?: number;
+    totalResolvedTickets?: number;
+    totalClosedTickets?: number;
     totalArchivedTickets?: number;
+    ticketsByStatus?: Record<string, number>;
     averageResolutionTimeHours: number | null;
     slaCompliancePercentage: number | null;
   };
-  selectedFilter?: StatusFilter;
-  onFilterChange?: (filter: StatusFilter) => void;
-  /** When set, Open/Resolved/Closed/Archived card clicks navigate to tickets page with this status filter. */
-  onNavigateToTickets?: (status: 'OPEN' | 'RESOLVED' | 'CLOSED' | 'ARCHIVED') => void;
+  selectedFilter?: DashboardTileFilter;
+  onFilterChange?: (filter: DashboardTileFilter) => void;
+  /** When set, card clicks navigate to tickets page with this status filter. */
+  onNavigateToTickets?: (status: 'BACKLOG_AND_ASSIGNED' | 'ACCEPTED' | 'IN_PROGRESS_GROUP' | 'RESOLVED_CLOSED_ARCHIVED') => void;
+}
+
+function sumStatus(byStatus: Record<string, number> | undefined, ...keys: string[]): number {
+  if (!byStatus) return 0;
+  return keys.reduce((s, k) => s + (byStatus[k] ?? 0), 0);
 }
 
 export default function MetricsCards({ metrics, selectedFilter = null, onFilterChange, onNavigateToTickets }: MetricsCardsProps) {
-  const handleOpenClick = () => {
-    if (onNavigateToTickets) onNavigateToTickets('OPEN');
-    else onFilterChange?.(selectedFilter === 'OPEN' ? null : 'OPEN');
+  const byStatus = metrics.ticketsByStatus ?? {};
+  const totalBacklog = sumStatus(byStatus, 'BACKLOG', 'ASSIGNED');
+  const totalAccepted = sumStatus(byStatus, 'ACCEPTED');
+  const totalInProgressGroup = sumStatus(byStatus, 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS');
+  const totalResolvedClosedArchived = sumStatus(byStatus, 'RESOLVED', 'CLOSED', 'ARCHIVED');
+
+  const handleBacklogClick = () => {
+    if (onNavigateToTickets) onNavigateToTickets('BACKLOG_AND_ASSIGNED');
+    else onFilterChange?.(selectedFilter === 'BACKLOG_AND_ASSIGNED' ? null : 'BACKLOG_AND_ASSIGNED');
   };
-  const handleResolvedClick = () => {
-    if (onNavigateToTickets) onNavigateToTickets('RESOLVED');
-    else onFilterChange?.(selectedFilter === 'RESOLVED' ? null : 'RESOLVED');
+  const handleAcceptedClick = () => {
+    if (onNavigateToTickets) onNavigateToTickets('ACCEPTED');
+    else onFilterChange?.(selectedFilter === 'ACCEPTED' ? null : 'ACCEPTED');
   };
-  const handleClosedClick = () => {
-    if (onNavigateToTickets) onNavigateToTickets('CLOSED');
-    else onFilterChange?.(selectedFilter === 'CLOSED' ? null : 'CLOSED');
+  const handleInProgressGroupClick = () => {
+    if (onNavigateToTickets) onNavigateToTickets('IN_PROGRESS_GROUP');
+    else onFilterChange?.(selectedFilter === 'IN_PROGRESS_GROUP' ? null : 'IN_PROGRESS_GROUP');
   };
-  const handleArchivedClick = () => {
-    if (onNavigateToTickets) onNavigateToTickets('ARCHIVED');
-    else onFilterChange?.(selectedFilter === 'ARCHIVED' ? null : 'ARCHIVED');
+  const handleResolvedClosedArchivedClick = () => {
+    if (onNavigateToTickets) onNavigateToTickets('RESOLVED_CLOSED_ARCHIVED');
+    else onFilterChange?.(selectedFilter === 'RESOLVED_CLOSED_ARCHIVED' ? null : 'RESOLVED_CLOSED_ARCHIVED');
   };
 
   const hasCardClick = !!onNavigateToTickets || !!onFilterChange;
-  const totalArchived = metrics.totalArchivedTickets ?? 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
       <MetricCard
-        title="Open Tickets"
-        value={metrics.totalOpenTickets}
+        title="Backlog"
+        value={totalBacklog}
         color="amber"
-        subtitle="Active problems"
-        onClick={hasCardClick ? handleOpenClick : undefined}
-        isSelected={selectedFilter === 'OPEN'}
+        subtitle="Backlog, Assigned"
+        onClick={hasCardClick ? handleBacklogClick : undefined}
+        isSelected={selectedFilter === 'BACKLOG_AND_ASSIGNED'}
       />
       <MetricCard
-        title="Resolved"
-        value={metrics.totalResolvedTickets}
+        title="Accepted"
+        value={totalAccepted}
+        color="sky"
+        subtitle="Accepted"
+        onClick={hasCardClick ? handleAcceptedClick : undefined}
+        isSelected={selectedFilter === 'ACCEPTED'}
+      />
+      <MetricCard
+        title="In Progress"
+        value={totalInProgressGroup}
+        color="emerald"
+        subtitle="In Progress, RCA Done, Fix In Progress"
+        onClick={hasCardClick ? handleInProgressGroupClick : undefined}
+        isSelected={selectedFilter === 'IN_PROGRESS_GROUP'}
+      />
+      <MetricCard
+        title="Resolved / Closed / Archived"
+        value={totalResolvedClosedArchived}
         color="green"
-        subtitle="Awaiting closure"
-        onClick={hasCardClick ? handleResolvedClick : undefined}
-        isSelected={selectedFilter === 'RESOLVED'}
-      />
-      <MetricCard
-        title="Closed"
-        value={metrics.totalClosedTickets}
-        color="sky"
-        subtitle="Completed"
-        onClick={hasCardClick ? handleClosedClick : undefined}
-        isSelected={selectedFilter === 'CLOSED'}
-      />
-      <MetricCard
-        title="Archived"
-        value={totalArchived}
-        color="sky"
-        subtitle="Archived"
-        onClick={hasCardClick ? handleArchivedClick : undefined}
-        isSelected={selectedFilter === 'ARCHIVED'}
+        subtitle="Resolved, Closed, Archived"
+        onClick={hasCardClick ? handleResolvedClosedArchivedClick : undefined}
+        isSelected={selectedFilter === 'RESOLVED_CLOSED_ARCHIVED'}
       />
       <MetricCard
         title="Avg Resolution"

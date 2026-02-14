@@ -10,8 +10,12 @@
 # Build outputs
 **/target/
 **/node_modules/
+fast-frontend/node/
 **/dist/
 *.class
 
 # Backend log files and archives
 logs/
+
+# H2 file-based database (prod-h2 profile)
+data/

@@ -1,0 +1,31 @@
+# Prod-H2: persistent file-based H2 (prod-style without Oracle).
+# Data is stored on disk and survives restarts. Set H2_DATABASE_PATH to override
+# the DB path (default: ./data/fastdb). For first-time setup, run the seed part
+# of init-h2.sql (and optionally seed-h2.sql) once; do not use sql.init.mode: always.
+#
+# LDAP → users table: Username is taken from X-Authenticated-User, REMOTE_USER, or
+# X-Remote-User (domain prefix like DOMAIN\user is stripped). Lookup is by users.username
+# (case-insensitive). If found and active → role/fullName/region from users; if not
+# found → READ_ONLY. Populate admin data via db/seed-prod-h2-users.sql (replace
+# placeholder usernames with your LDAP usernames).
+spring:
+  datasource:
+    url: jdbc:h2:file:${H2_DATABASE_PATH:./data/fastdb};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: ${H2_CONSOLE_ENABLED:false}
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+  sql:
+    init:
+      mode: never
+logging:
+  level:
+    com.enterprise.fast: INFO

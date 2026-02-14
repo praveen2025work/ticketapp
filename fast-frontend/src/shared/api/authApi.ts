@@ -16,7 +16,22 @@ export function setAuthApiBaseUrl(url: string): void {
   axiosWithCredentials.defaults.baseURL = base;
 }
 
+/** Login with username (prod/dev/prod-h2 AD flow). Backend validates user and returns JWT. */
+export interface LoginResponse {
+  token: string;
+  username: string;
+  fullName: string;
+  role: string;
+  region?: string | null;
+}
+
 export const authApi = {
+  /** Login with username resolved from AD. Used when authMode is ad. */
+  login: async (username: string): Promise<LoginResponse> => {
+    const response = await axiosWithCredentials.post<LoginResponse>('/auth/login', { username });
+    return response.data;
+  },
+
   /** Get BAM token (Windows Auth). Call with credentials. */
   getBamToken: async (appName: string, redirectURL: string): Promise<BamAuthResponse> => {
     const response = await axiosWithCredentials.get<BamAuthResponse>('/bam/token', {

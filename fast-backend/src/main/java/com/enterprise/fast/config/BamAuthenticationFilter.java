@@ -28,9 +28,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Filter to handle BAM SSO authentication.
- * In local environment: bypasses authentication
- * In dev/prod: validates BAM token and extracts user from Windows AD
+ * Filter to handle authentication by mode.
+ * - local: X-Authenticated-User header, dev user switcher
+ * - ad: Frontend calls AD, POST /auth/login, JwtAuthFilter handles Bearer tokens (prod/dev/prod-h2)
+ * - bam: BAM SSO token, extracts user from Windows AD
  */
 @Component
 @RequiredArgsConstructor
@@ -56,6 +57,9 @@ public class BamAuthenticationFilter extends OncePerRequestFilter {
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 if ("local".equalsIgnoreCase(authMode)) {
                     authenticateLocalUser(request);
+                } else if ("ad".equalsIgnoreCase(authMode)) {
+                    // AD mode: frontend calls AD, POST /auth/login, JwtAuthFilter handles Bearer tokens
+                    // Do nothing here
                 } else {
                     // BAM MODE: if we send 401/403, do not continue the chain
                     if (authenticateBamUser(request, response)) {

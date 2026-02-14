@@ -60,7 +60,7 @@ class FastProblemMapperTest {
                 .id(1L)
                 .title("P")
                 .classification(Classification.A)
-                .status(TicketStatus.NEW)
+                .status(TicketStatus.BACKLOG)
                 .regions(new java.util.ArrayList<>())
                 .build();
         FastProblemResponse response = mapper.toResponse(problem);
@@ -68,7 +68,7 @@ class FastProblemMapperTest {
         assertThat(response.getId()).isEqualTo(1L);
         assertThat(response.getTitle()).isEqualTo("P");
         assertThat(response.getClassification()).isEqualTo("A");
-        assertThat(response.getStatus()).isEqualTo("NEW");
+        assertThat(response.getStatus()).isEqualTo("BACKLOG");
     }
 
     @Test

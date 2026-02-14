@@ -88,6 +88,7 @@ public class FastProblemMapper {
                 .createdDate(entity.getCreatedDate())
                 .updatedDate(entity.getUpdatedDate())
                 .resolvedDate(entity.getResolvedDate())
+                .inProgressDate(entity.getInProgressDate())
                 .approvalRecords(entity.getApprovalRecords() != null ?
                         deduplicateApprovalRecordsByReviewer(entity.getApprovalRecords()).stream().map(this::toApprovalResponse).collect(Collectors.toList()) :
                         Collections.emptyList())
@@ -133,6 +134,8 @@ public class FastProblemMapper {
                 .confluenceLink(entity.getConfluenceLink())
                 .createdDate(entity.getCreatedDate())
                 .updatedDate(entity.getUpdatedDate())
+                .resolvedDate(entity.getResolvedDate())
+                .inProgressDate(entity.getInProgressDate())
                 .links(entity.getLinks() != null ?
                         entity.getLinks().stream().filter(java.util.Objects::nonNull).map(this::toProblemLinkResponse).filter(java.util.Objects::nonNull).collect(Collectors.toList()) :
                         Collections.emptyList())

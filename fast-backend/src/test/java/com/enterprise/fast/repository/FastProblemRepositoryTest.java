@@ -24,7 +24,7 @@ class FastProblemRepositoryTest {
         FastProblem p = FastProblem.builder()
                 .title("Test")
                 .classification(Classification.A)
-                .status(TicketStatus.NEW)
+                .status(TicketStatus.BACKLOG)
                 .deleted(false)
                 .createdBy("test")
                 .build();
@@ -42,7 +42,7 @@ class FastProblemRepositoryTest {
         FastProblem p = FastProblem.builder()
                 .title("UniqueSearchTerm123")
                 .classification(Classification.A)
-                .status(TicketStatus.NEW)
+                .status(TicketStatus.BACKLOG)
                 .deleted(false)
                 .createdBy("test")
                 .build();

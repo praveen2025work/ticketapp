@@ -21,6 +21,7 @@ import { problemApi } from '../shared/api/problemApi';
 import { approvalApi } from '../shared/api/approvalApi';
 import { usersApi } from '../shared/api/usersApi';
 import type { FastProblem } from '../shared/types';
+import { STATUS_LABELS } from '../shared/types';
 import { useAuth } from '../shared/context/AuthContext';
 import { getApiError } from '../shared/utils/apiError';
 import ClassificationBadge from '../components/ClassificationBadge';
@@ -114,7 +115,7 @@ export default function TicketDetailPage() {
   });
 
   const canAssignBtbTechLead = (user?.role === 'ADMIN' || user?.role === 'RTB_OWNER') &&
-    ticket && ['ASSIGNED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'].includes(ticket.status);
+    ticket && ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'ROOT_CAUSE_IDENTIFIED', 'FIX_IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ARCHIVED'].includes(ticket.status);
 
   const buildTicketsUrl = () => {
     const f = previousFilters;
@@ -150,7 +151,8 @@ export default function TicketDetailPage() {
   const actionLoading = submitMutation.isPending || statusMutation.isPending;
 
   const nextStatusMap: Record<string, string> = {
-    ASSIGNED: 'IN_PROGRESS',
+    ASSIGNED: 'ACCEPTED',
+    ACCEPTED: 'IN_PROGRESS',
     IN_PROGRESS: 'ROOT_CAUSE_IDENTIFIED',
     ROOT_CAUSE_IDENTIFIED: 'FIX_IN_PROGRESS',
     FIX_IN_PROGRESS: 'RESOLVED',
@@ -227,7 +229,7 @@ export default function TicketDetailPage() {
           </section>
           {/* Actions */}
           <section className="flex flex-wrap gap-2 justify-end items-center w-max flex-shrink-0">
-            {ticket.status === 'NEW' && (!ticket.approvalRecords || ticket.approvalRecords.length === 0) && user?.role === 'ADMIN' && (
+            {ticket.status === 'BACKLOG' && (!ticket.approvalRecords || ticket.approvalRecords.length === 0) && user?.role === 'ADMIN' && (
               <button onClick={() => submitMutation.mutate()} disabled={actionLoading}
                 className={`${btnBase} bg-primary text-white hover:bg-primary-hover`}
                 title="Submit for approval">
@@ -235,7 +237,7 @@ export default function TicketDetailPage() {
                 Approval
               </button>
             )}
-            {ticket.status === 'NEW' && ticket.approvalRecords && ticket.approvalRecords.length > 0 && user?.role === 'ADMIN' && (
+            {ticket.status === 'BACKLOG' && ticket.approvalRecords && ticket.approvalRecords.length > 0 && user?.role === 'ADMIN' && (
               <span className="text-sm text-slate-500 italic">Submitted for approval</span>
             )}
             {nextStatusMap[ticket.status] && (user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
@@ -243,7 +245,7 @@ export default function TicketDetailPage() {
                 className={`${btnBase} bg-primary text-white hover:bg-primary-hover`}
                 title={`Move to ${nextStatusMap[ticket.status].replace(/_/g, ' ')}`}>
                 <ArrowRightIcon className={btnIcon} aria-hidden />
-                Move to {nextStatusMap[ticket.status].replace(/_/g, ' ')}
+                Move to {STATUS_LABELS[nextStatusMap[ticket.status]] ?? nextStatusMap[ticket.status]?.replace(/_/g, ' ')}
               </button>
             )}
             {(user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
@@ -268,7 +270,7 @@ export default function TicketDetailPage() {
                 Archive
               </button>
             )}
-            {user?.role === 'ADMIN' && (ticket.status === 'NEW' || ticket.status === 'ASSIGNED') && (
+            {user?.role === 'ADMIN' && (ticket.status === 'BACKLOG' || ticket.status === 'ASSIGNED' || ticket.status === 'ACCEPTED') && (
               <>
                 <button onClick={() => statusMutation.mutate('CLOSED')} disabled={actionLoading}
                   className={`${btnBase} bg-slate-500 text-white hover:bg-slate-600`}
@@ -298,7 +300,7 @@ export default function TicketDetailPage() {
         <div className="flex flex-wrap items-center gap-3 py-3 px-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-600 text-sm">
           <span className="font-medium text-slate-600 dark:text-slate-400">Status</span>
           <span className="px-2.5 py-1 rounded-lg font-medium bg-primary/15 text-primary dark:bg-primary/25">
-            {ticket.status.replace(/_/g, ' ')}
+            {STATUS_LABELS[ticket.status] ?? ticket.status.replace(/_/g, ' ')}
           </span>
           <span className="text-slate-400 dark:text-slate-500">·</span>
           <span className="text-slate-600 dark:text-slate-300">{ticket.ticketAgeDays} days old</span>
