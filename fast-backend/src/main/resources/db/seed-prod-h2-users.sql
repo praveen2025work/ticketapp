@@ -2,6 +2,8 @@
 -- Prod-H2: Seed admin / user data for LDAP authentication
 -- =============================================================================
 -- Run this once after the app has created the schema (Hibernate ddl-auto: update).
+-- If using custom H2_SCHEMA (default: FAST), run first: SET SCHEMA your_schema;
+--
 -- Username must match the value sent by LDAP:
 --   - Taken from X-Authenticated-User, REMOTE_USER, or X-Remote-User (in that order).
 --   - Domain prefix is stripped (e.g. DOMAIN\jdoe -> jdoe). Lookup is case-insensitive.

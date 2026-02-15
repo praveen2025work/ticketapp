@@ -1,7 +1,10 @@
 # Prod-H2: persistent file-based H2 (prod-style without Oracle).
-# Data is stored on disk and survives restarts. Set H2_DATABASE_PATH to override
-# the DB path (default: ./data/fastdb). For first-time setup, run the seed part
-# of init-h2.sql (and optionally seed-h2.sql) once; do not use sql.init.mode: always.
+# Customize via environment variables:
+#   H2_DATABASE_PATH  - DB file path (default: ./data/fastdb), e.g. /var/lib/fast/data/fastdb
+#   H2_SCHEMA        - Schema name (default: FAST). Schema is auto-created on first connect.
+#   H2_USERNAME      - DB username (default: sa)
+#   H2_PASSWORD      - DB password (default: empty). Set for production.
+# For first-time setup, run seed-prod-h2-users.sql once; do not use sql.init.mode: always.
 #
 # LDAP → users table: Username is taken from X-Authenticated-User, REMOTE_USER, or
 # X-Remote-User (domain prefix like DOMAIN\user is stripped). Lookup is by users.username
@@ -10,10 +13,10 @@
 # placeholder usernames with your LDAP usernames).
 spring:
   datasource:
-    url: jdbc:h2:file:${H2_DATABASE_PATH:./data/fastdb};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:file:${H2_DATABASE_PATH:./data/fastdb};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS ${H2_SCHEMA:FAST}\;SET SCHEMA ${H2_SCHEMA:FAST}
     driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    username: ${H2_USERNAME:sa}
+    password: ${H2_PASSWORD:}
   h2:
     console:
       enabled: ${H2_CONSOLE_ENABLED:false}
@@ -23,6 +26,9 @@ spring:
       ddl-auto: update
     show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
+    properties:
+      hibernate:
+        default_schema: ${H2_SCHEMA:FAST}
   sql:
     init:
       mode: never
