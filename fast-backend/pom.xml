@@ -23,6 +23,9 @@
         <springdoc.version>2.3.0</springdoc.version>
         <frontend.dir>${project.basedir}/../fast-frontend</frontend.dir>
         <skip.frontend>false</skip.frontend>
+        <!-- Node version for frontend-maven-plugin (use 22.x to match Node 22; override with -Dnode.version=v22.22.0) -->
+        <node.version>v22.22.0</node.version>
+        <npm.version>10.9.2</npm.version>
     </properties>
 
     <profiles>
@@ -133,8 +136,8 @@
                         </goals>
                         <phase>generate-resources</phase>
                         <configuration>
-                            <nodeVersion>v20.11.0</nodeVersion>
-                            <npmVersion>10.2.4</npmVersion>
+                            <nodeVersion>${node.version}</nodeVersion>
+                            <npmVersion>${npm.version}</npmVersion>
                             <skip>${skip.frontend}</skip>
                         </configuration>
                     </execution>
