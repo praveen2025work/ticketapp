@@ -14,7 +14,7 @@ server:
 
 app:
   auth:
-    mode: ad
+    mode: local
 
 spring:
   datasource:
