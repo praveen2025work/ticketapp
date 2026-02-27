@@ -46,6 +46,9 @@ public class FastProblem {
     @Column(name = "request_number", length = 100)
     private String requestNumber;
 
+    @Column(name = "dq_reference", length = 100)
+    private String dqReference;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "fast_problem_application",
@@ -54,6 +57,19 @@ public class FastProblem {
     )
     @Builder.Default
     private List<Application> applications = new ArrayList<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "fast_problem_user_group",
+            joinColumns = @JoinColumn(name = "fast_problem_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_group_id")
+    )
+    @Builder.Default
+    private List<UserGroup> userGroups = new ArrayList<>();
+
+    @Lob
+    @Column(name = "impacted_user_group_notes")
+    private String impactedUserGroupNotes;
 
     @Lob
     @Column(name = "anticipated_benefits")

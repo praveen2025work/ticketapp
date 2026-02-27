@@ -89,15 +89,15 @@ public class ApprovalServiceImpl implements ApprovalService {
 
         ApprovalRecord saved = approvalRepository.save(record);
 
-        // Move to ASSIGNED only when ALL approvals (Reviewer, Approver, RTB Owner) are done
+        // Move to ACCEPTED automatically when ALL approvals (Reviewer, Approver, RTB Owner) are done
         FastProblem problem = record.getFastProblem();
         if (problem.getStatus() == TicketStatus.BACKLOG) {
             long approvedCount = approvalRepository.countByFastProblemIdAndDecision(problem.getId(), ApprovalDecision.APPROVED);
             long totalForProblem = approvalRepository.findByFastProblemId(problem.getId()).size();
             if (approvedCount == totalForProblem && totalForProblem >= 3) {
-                problem.setStatus(TicketStatus.ASSIGNED);
+                problem.setStatus(TicketStatus.ACCEPTED);
                 problemRepository.save(problem);
-                auditLogService.logAction(problem.getId(), "STATUS_CHANGED", username, "status", "BACKLOG", "ASSIGNED");
+                auditLogService.logAction(problem.getId(), "STATUS_CHANGED", username, "status", "BACKLOG", "ACCEPTED");
             }
         }
 

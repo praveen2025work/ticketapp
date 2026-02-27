@@ -6,6 +6,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import axiosClient from '../shared/api/axiosClient';
 import { problemApi } from '../shared/api/problemApi';
 import { applicationsApi } from '../shared/api/applicationsApi';
+import { userGroupsApi } from '../shared/api/userGroupsApi';
 import { getApiErrorMessage } from '../shared/utils/apiError';
 import { getDefaultTicketDateRange } from '../shared/utils/dateUtils';
 import type { FastProblem, PagedResponse, Classification, RegionalCode } from '../shared/types';
@@ -32,6 +33,7 @@ export default function TicketListPage() {
   const [classFilter, setClassFilter] = useState(searchParams.get('classification') ?? '');
   const [applicationFilter, setApplicationFilter] = useState<string>(searchParams.get('application') ?? '');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') ?? '');
+  const [impactedUserGroupFilter, setImpactedUserGroupFilter] = useState(searchParams.get('impactedUserGroupId') ?? '');
   const [ragFilter, setRagFilter] = useState(searchParams.get('ragStatus') ?? '');
   const [fromDate, setFromDate] = useState(searchParams.get('fromDate') ?? defaultRange.fromDate);
   const [toDate, setToDate] = useState(searchParams.get('toDate') ?? defaultRange.toDate);
@@ -48,6 +50,7 @@ export default function TicketListPage() {
     const cls = searchParams.get('classification') ?? '';
     const app = searchParams.get('application') ?? '';
     const status = searchParams.get('status') ?? '';
+    const impactedUserGroup = searchParams.get('impactedUserGroupId') ?? '';
     const rag = searchParams.get('ragStatus') ?? '';
     const from = searchParams.get('fromDate') ?? range.fromDate;
     const to = searchParams.get('toDate') ?? range.toDate;
@@ -61,6 +64,7 @@ export default function TicketListPage() {
       setClassFilter(cls);
       setApplicationFilter(app);
       setStatusFilter(status);
+      setImpactedUserGroupFilter(impactedUserGroup);
       setRagFilter(rag);
       setFromDate(from);
       setToDate(to);
@@ -78,6 +82,10 @@ export default function TicketListPage() {
     queryKey: ['applications'],
     queryFn: () => applicationsApi.list(),
   });
+  const { data: userGroups = [] } = useQuery({
+    queryKey: ['user-groups', true],
+    queryFn: () => userGroupsApi.list(true),
+  });
 
   const filterParams = {
     q: debouncedSearch.trim() || undefined,
@@ -85,6 +93,9 @@ export default function TicketListPage() {
     classification: classFilter.trim() || undefined,
     application: applicationFilter || undefined,
     status: statusFilter.trim() || undefined,
+    impactedUserGroupId: impactedUserGroupFilter && !Number.isNaN(parseInt(impactedUserGroupFilter, 10))
+      ? parseInt(impactedUserGroupFilter, 10)
+      : undefined,
     ragStatus: ragFilter.trim() || undefined,
     fromDate: fromDate || undefined,
     toDate: toDate || undefined,
@@ -100,6 +111,7 @@ export default function TicketListPage() {
     filterParams.classification ||
     filterParams.application ||
     filterParams.status ||
+    filterParams.impactedUserGroupId != null ||
     filterParams.ragStatus ||
     filterParams.fromDate ||
     filterParams.toDate ||
@@ -115,6 +127,7 @@ export default function TicketListPage() {
     applicationFilter ||
     classFilter ||
     statusFilter ||
+    impactedUserGroupFilter ||
     ragFilter ||
     ageMin !== '' ||
     ageMax !== '' ||
@@ -126,7 +139,7 @@ export default function TicketListPage() {
   );
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['problems', page, filterParams.q, filterParams.region, filterParams.classification, filterParams.application, filterParams.status, filterParams.ragStatus, filterParams.fromDate, filterParams.toDate, filterParams.ageMin, filterParams.ageMax, filterParams.minImpact, filterParams.priority],
+    queryKey: ['problems', page, filterParams.q, filterParams.region, filterParams.classification, filterParams.application, filterParams.status, filterParams.impactedUserGroupId, filterParams.ragStatus, filterParams.fromDate, filterParams.toDate, filterParams.ageMin, filterParams.ageMax, filterParams.minImpact, filterParams.priority],
     queryFn: (): Promise<PagedResponse<FastProblem>> =>
       hasFilters
         ? problemApi.getWithFilters(filterParams, page, PAGE_SIZE, SORT_BY, SORT_DIRECTION)
@@ -141,6 +154,7 @@ export default function TicketListPage() {
     setClassFilter('');
     setApplicationFilter('');
     setStatusFilter('');
+    setImpactedUserGroupFilter('');
     setRagFilter('');
     setFromDate(range.fromDate);
     setToDate(range.toDate);
@@ -173,6 +187,7 @@ export default function TicketListPage() {
       if (regionFilter) params.set('region', regionFilter);
       if (classFilter) params.set('classification', classFilter);
       if (statusFilter) params.set('status', statusFilter);
+      if (impactedUserGroupFilter) params.set('impactedUserGroupId', impactedUserGroupFilter);
       if (ragFilter) params.set('ragStatus', ragFilter);
       if (applicationFilter) params.set('application', applicationFilter);
       if (fromDate) params.set('fromDate', fromDate);
@@ -286,6 +301,21 @@ export default function TicketListPage() {
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value || 'all'} value={opt.value}>
                   {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="min-w-[180px]">
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Impacted user group</label>
+            <select
+              value={impactedUserGroupFilter}
+              onChange={(e) => { setImpactedUserGroupFilter(e.target.value); setPage(0); }}
+              className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-500 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/50 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            >
+              <option value="">All user groups</option>
+              {userGroups.map((g) => (
+                <option key={g.id} value={String(g.id)}>
+                  {g.name}{g.code ? ` (${g.code})` : ''}
                 </option>
               ))}
             </select>
@@ -417,6 +447,7 @@ export default function TicketListPage() {
                 classification: classFilter || undefined,
                 application: applicationFilter || undefined,
                 status: statusFilter || undefined,
+                impactedUserGroupId: filterParams.impactedUserGroupId,
                 ragStatus: ragFilter || undefined,
                 fromDate: fromDate || undefined,
                 toDate: toDate || undefined,

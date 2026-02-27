@@ -8,6 +8,7 @@ Enterprise Problem Ticket System for managing problems, approvals, and knowledge
 - [Project Structure](#project-structure)
 - [Local Setup](#local-setup)
 - [Running the Application](#running-the-application)
+- [Environment Spin-Up Runbook](#environment-spin-up-runbook)
 - [Creating New Components](#creating-new-components)
 - [Troubleshooting](#troubleshooting)
 - [Testing](#testing)
@@ -164,6 +165,110 @@ mvn -f fast-backend/pom.xml package -P backend-only -DskipTests
 
 When using `local` profile: `http://localhost:8081/h2-console`  
 JDBC URL: `jdbc:h2:mem:fastdb` | User: `sa` | Password: (empty)
+
+---
+
+## Environment Spin-Up Runbook
+
+Use this section when starting FAST in different environments.
+
+### 1. Local (default, in-memory H2, separate FE+BE)
+
+```bash
+# Terminal 1
+cd /Users/praveennandyala28/projects/fast/fast-backend
+mvn spring-boot:run
+
+# Terminal 2
+cd /Users/praveennandyala28/projects/fast/fast-frontend
+npm run dev
+```
+
+Checklist:
+- [ ] Backend is up at `http://localhost:8081`
+- [ ] Frontend is up at `http://localhost:5173`
+- [ ] Login works with local users (for example `admin`)
+- [ ] API works from UI (no CORS/401 errors in browser console)
+
+### 2. Prod-H2 (single Spring deployment with bundled UI)
+
+```bash
+cd /Users/praveennandyala28/projects/fast
+H2_DATABASE_PATH=/Users/praveennandyala28/projects/fast/data/prod-h2/fastdb \
+SPRING_PROFILES_ACTIVE=prod-h2 \
+mvn -f fast-backend/pom.xml spring-boot:run
+```
+
+One-time load using your own SQL file:
+
+```bash
+cd /Users/praveennandyala28/projects/fast
+H2_DATABASE_PATH=/Users/praveennandyala28/projects/fast/data/prod-h2/fastdb \
+SPRING_PROFILES_ACTIVE=prod-h2 \
+mvn -f fast-backend/pom.xml spring-boot:run \
+  -Dspring-boot.run.arguments="--spring.sql.init.mode=always --spring.sql.init.data-locations=file:/absolute/path/your-data.sql"
+```
+
+After first successful load, remove `--spring.sql.init.mode=always` and run normally.
+
+To load baseline sample data for prod-h2 (users, applications, user groups, user-application mappings, sample tickets):
+
+```bash
+cd /Users/praveennandyala28/projects/fast
+H2_DATABASE_PATH=/Users/praveennandyala28/projects/fast/data/prod-h2/fastdb \
+SPRING_PROFILES_ACTIVE=prod-h2 \
+mvn -f fast-backend/pom.xml spring-boot:run \
+  -Dspring-boot.run.arguments="--spring.sql.init.mode=always --spring.sql.init.data-locations=file:/Users/praveennandyala28/projects/fast/fast-backend/src/main/resources/db/seed-prod-h2-users.sql"
+```
+
+Where to change file locations:
+- H2 DB file path: `H2_DATABASE_PATH` env var
+- Custom seed file path: `--spring.sql.init.data-locations=file:/absolute/path/your-data.sql`
+
+Checklist:
+- [ ] Root URL `http://localhost:8081/` loads FAST UI
+- [ ] `/api/v1/...` endpoints respond
+- [ ] Data persists after restart (stop/start app and verify same records)
+- [ ] `spring.sql.init.mode` is back to `never` after first-time load
+
+### 3. Dev (Oracle)
+
+```bash
+cd /Users/praveennandyala28/projects/fast/fast-backend
+export SPRING_PROFILES_ACTIVE=dev
+export ORACLE_HOST=<host>
+export ORACLE_PORT=<port>
+export ORACLE_SID=<sid>
+export ORACLE_USER=<user>
+export ORACLE_PASSWORD=<password>
+mvn spring-boot:run
+```
+
+Checklist:
+- [ ] Oracle schema is already created using `fast-backend/src/main/resources/db/init-oracle.sql`
+- [ ] Optional demo seed applied when needed: `fast-backend/src/main/resources/db/seed-oracle-sample-data.sql`
+- [ ] App starts without datasource/auth errors
+- [ ] API login/authorization works for expected roles
+
+### 4. Prod (Oracle, packaged JAR)
+
+```bash
+cd /Users/praveennandyala28/projects/fast
+mvn -f fast-backend/pom.xml clean package -DskipTests
+APP_JWT_SECRET=<strong-secret> \
+SPRING_PROFILES_ACTIVE=prod \
+ORACLE_HOST=<host> ORACLE_PORT=<port> ORACLE_SID=<sid> \
+ORACLE_USER=<user> ORACLE_PASSWORD=<password> \
+java -jar fast-backend/target/fast-backend-1.0.0-SNAPSHOT.jar
+```
+
+Checklist:
+- [ ] `APP_JWT_SECRET` is set
+- [ ] Oracle connectivity is verified
+- [ ] Optional demo seed applied when needed: `fast-backend/src/main/resources/db/seed-oracle-sample-data.sql`
+- [ ] UI loads from same Spring app
+- [ ] Role-based access paths validated (ADMIN/REVIEWER/APPROVER/RTB_OWNER/TECH_LEAD/READ_ONLY)
+- [ ] Logs are writing under `logs/`
 
 ---
 

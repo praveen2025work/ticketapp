@@ -23,7 +23,10 @@ public class FastProblemResponse {
     private Integer userImpactCount;
     private String affectedApplication;
     private String requestNumber;
+    private String dqReference;
     private List<ApplicationResponse> applications;
+    private List<UserGroupResponse> impactedUserGroups;
+    private String impactedUserGroupNotes;
     private String anticipatedBenefits;
     private String classification;
     private List<String> regionalCodes;

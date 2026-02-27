@@ -29,7 +29,13 @@ public class UpdateFastProblemRequest {
 
     private String requestNumber;
 
+    private String dqReference;
+
     private List<Long> applicationIds;
+
+    private List<Long> impactedUserGroupIds;
+
+    private String impactedUserGroupNotes;
 
     private String anticipatedBenefits;
 

@@ -2,6 +2,7 @@ package com.enterprise.fast.controller;
 
 import com.enterprise.fast.domain.entity.Application;
 import com.enterprise.fast.domain.entity.User;
+import com.enterprise.fast.dto.request.UpdateUserRequest;
 import com.enterprise.fast.exception.ResourceNotFoundException;
 import com.enterprise.fast.repository.ApplicationRepository;
 import com.enterprise.fast.repository.UserRepository;
@@ -123,6 +124,54 @@ class UserControllerTest {
             assertThat(e.getMessage()).contains("User");
         }
         verify(userRepository).findById(999L);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUser_WhenUserExists_ReturnsOk() {
+        User u = user(1L, "user1");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(u));
+        when(userRepository.findByUsernameIgnoreCase("user1updated")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user1updated@test.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenReturn(u);
+
+        UpdateUserRequest request = new UpdateUserRequest(
+                "User1Updated",
+                "user1updated@test.com",
+                "User One Updated",
+                "TECH_LEAD",
+                "emea",
+                false
+        );
+
+        ResponseEntity<?> res = controller.updateUser(1L, request);
+
+        assertThat(res.getStatusCode().value()).isEqualTo(200);
+        verify(userRepository).findById(1L);
+        verify(userRepository).save(u);
+        assertThat(u.getUsername()).isEqualTo("user1updated");
+        assertThat(u.getEmail()).isEqualTo("user1updated@test.com");
+        assertThat(u.getFullName()).isEqualTo("User One Updated");
+        assertThat(u.getRole().name()).isEqualTo("TECH_LEAD");
+        assertThat(u.getRegion()).isEqualTo("EMEA");
+        assertThat(u.getActive()).isFalse();
+    }
+
+    @Test
+    void updateUser_WhenDuplicateEmail_Throws() {
+        User existing = user(1L, "user1");
+        User other = user(2L, "user2");
+        other.setEmail("taken@test.com");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(userRepository.findByEmail("taken@test.com")).thenReturn(Optional.of(other));
+
+        try {
+            controller.updateUser(1L, new UpdateUserRequest(null, "taken@test.com", null, null, null, null));
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage()).contains("Email already exists");
+        }
+
+        verify(userRepository).findById(1L);
         verify(userRepository, never()).save(any());
     }
 }

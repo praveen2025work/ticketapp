@@ -2,6 +2,7 @@ package com.enterprise.fast.controller;
 
 import com.enterprise.fast.domain.entity.Application;
 import com.enterprise.fast.domain.entity.User;
+import com.enterprise.fast.dto.request.UpdateUserRequest;
 import com.enterprise.fast.dto.response.ApplicationResponse;
 import com.enterprise.fast.dto.response.AuthResponse;
 import com.enterprise.fast.dto.response.PagedResponse;
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import com.enterprise.fast.domain.enums.UserRole;
@@ -146,6 +148,70 @@ public class UserController {
                 : List.of();
         user.getApplications().clear();
         user.getApplications().addAll(applications);
+        userRepository.save(user);
+        return ResponseEntity.ok(toUserResponse(user));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update user details (Admin only)")
+    @Transactional
+    public ResponseEntity<UserResponse> updateUser(
+            @PathVariable Long id,
+            @RequestBody UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
+
+        if (request.getUsername() != null) {
+            String normalizedUsername = request.getUsername().trim().toLowerCase();
+            if (!StringUtils.hasText(normalizedUsername)) {
+                throw new IllegalArgumentException("Username cannot be empty");
+            }
+            userRepository.findByUsernameIgnoreCase(normalizedUsername)
+                    .filter(existing -> !existing.getId().equals(id))
+                    .ifPresent(existing -> {
+                        throw new IllegalArgumentException("Username already exists");
+                    });
+            user.setUsername(normalizedUsername);
+        }
+
+        if (request.getEmail() != null) {
+            String normalizedEmail = request.getEmail().trim();
+            if (!StringUtils.hasText(normalizedEmail)) {
+                throw new IllegalArgumentException("Email cannot be empty");
+            }
+            userRepository.findByEmail(normalizedEmail)
+                    .filter(existing -> !existing.getId().equals(id))
+                    .ifPresent(existing -> {
+                        throw new IllegalArgumentException("Email already exists");
+                    });
+            user.setEmail(normalizedEmail);
+        }
+
+        if (request.getFullName() != null) {
+            String fullName = request.getFullName().trim();
+            if (!StringUtils.hasText(fullName)) {
+                throw new IllegalArgumentException("Full name cannot be empty");
+            }
+            user.setFullName(fullName);
+        }
+
+        if (request.getRole() != null) {
+            try {
+                user.setRole(UserRole.valueOf(request.getRole().trim().toUpperCase()));
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Invalid role: " + request.getRole());
+            }
+        }
+
+        if (request.getRegion() != null) {
+            String region = request.getRegion().trim();
+            user.setRegion(region.isEmpty() ? null : region.toUpperCase());
+        }
+
+        if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
+
         userRepository.save(user);
         return ResponseEntity.ok(toUserResponse(user));
     }

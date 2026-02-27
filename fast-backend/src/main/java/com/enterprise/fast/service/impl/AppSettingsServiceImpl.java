@@ -40,12 +40,14 @@ public class AppSettingsServiceImpl implements AppSettingsService {
     public void updateSettings(Map<String, String> updates) {
         if (updates == null || updates.isEmpty()) return;
         for (Map.Entry<String, String> e : updates.entrySet()) {
-            repository.findBySettingKey(e.getKey()).ifPresent(s -> {
-                // Do not overwrite password with mask
-                if ("smtpPassword".equals(e.getKey()) && MASK.equals(e.getValue())) return;
-                s.setSettingValue(e.getValue() != null ? e.getValue() : "");
-                repository.save(s);
-            });
+            // Do not overwrite password with mask
+            if ("smtpPassword".equals(e.getKey()) && MASK.equals(e.getValue())) continue;
+            AppSetting setting = repository.findBySettingKey(e.getKey()).orElseGet(() -> AppSetting.builder()
+                    .settingKey(e.getKey())
+                    .description(null)
+                    .build());
+            setting.setSettingValue(e.getValue() != null ? e.getValue() : "");
+            repository.save(setting);
         }
     }
 }

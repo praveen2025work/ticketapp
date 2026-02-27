@@ -349,16 +349,28 @@ export default function SettingsPage({ embedded, readOnly }: { embedded?: boolea
       {/* Ticket email */}
       <section className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Ticket Email</h2>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={(local['ticketEmailEnabled'] ?? 'true') === 'true'}
-            onChange={(e) => handleChange('ticketEmailEnabled', e.target.checked ? 'true' : 'false')}
-            disabled={readOnly}
-            className="rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-60"
-          />
-          <span className="text-sm font-medium text-gray-700">Allow sending email to assignee from ticket</span>
-        </label>
+        <div className="space-y-3">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={(local['ticketEmailEnabled'] ?? 'true') === 'true'}
+              onChange={(e) => handleChange('ticketEmailEnabled', e.target.checked ? 'true' : 'false')}
+              disabled={readOnly}
+              className="rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-60"
+            />
+            <span className="text-sm font-medium text-gray-700">Allow sending email to assignee from ticket</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={(local['acceptedTicketEmailEnabled'] ?? 'false') === 'true'}
+              onChange={(e) => handleChange('acceptedTicketEmailEnabled', e.target.checked ? 'true' : 'false')}
+              disabled={readOnly}
+              className="rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-60"
+            />
+            <span className="text-sm font-medium text-gray-700">Send notification email when a ticket moves to Accepted</span>
+          </label>
+        </div>
       </section>
 
       {!readOnly && (

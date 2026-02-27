@@ -25,12 +25,12 @@ public interface FastProblemService {
 
     PagedResponse<FastProblemResponse> findWithFilters(String keyword, String regionCode, String classification,
                                                        String application, java.time.LocalDate fromDate, java.time.LocalDate toDate,
-                                                       String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority,
+                                                       String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority, Long impactedUserGroupId,
                                                        int page, int size, String sortBy, String direction);
 
     List<FastProblemResponse> exportWithFilters(String keyword, String regionCode, String classification,
                                                 String application, java.time.LocalDate fromDate, java.time.LocalDate toDate,
-                                                String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority, int limit);
+                                                String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority, Long impactedUserGroupId, int limit);
 
     FastProblemResponse update(Long id, UpdateFastProblemRequest request, String username);
 

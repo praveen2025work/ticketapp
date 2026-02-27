@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { applicationsApi } from '../shared/api/applicationsApi';
+import { userGroupsApi } from '../shared/api/userGroupsApi';
 import { usersApi } from '../shared/api/usersApi';
 import { getApiErrorMessage } from '../shared/utils/apiError';
 import SearchableSelect from './SearchableSelect';
@@ -27,7 +28,10 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
         userImpactCount: initialData?.userImpactCount || 0,
         affectedApplication: initialData?.affectedApplication || '',
         requestNumber: initialData?.requestNumber || '',
+        dqReference: initialData?.dqReference || '',
         applicationIds: initialData?.applicationIds ?? [],
+        impactedUserGroupIds: initialData?.impactedUserGroupIds ?? [],
+        impactedUserGroupNotes: initialData?.impactedUserGroupNotes || '',
         regionalCodes: initialData?.regionalCodes?.length ? initialData.regionalCodes : ['AMER'],
         targetResolutionHours: initialData?.targetResolutionHours || 48,
         priority: initialData?.priority ?? 3,
@@ -58,7 +62,10 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
             userImpactCount: formData.userImpactCount,
             affectedApplication: formData.affectedApplication || undefined,
             requestNumber: formData.requestNumber || undefined,
+            dqReference: formData.dqReference || undefined,
             applicationIds: formData.applicationIds?.length ? formData.applicationIds : undefined,
+            impactedUserGroupIds: formData.impactedUserGroupIds?.length ? formData.impactedUserGroupIds : undefined,
+            impactedUserGroupNotes: formData.impactedUserGroupNotes?.trim() || undefined,
             anticipatedBenefits: formData.anticipatedBenefits || undefined,
             regionalCodes: formData.regionalCodes,
             targetResolutionHours: formData.targetResolutionHours,
@@ -99,6 +106,11 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
         queryFn: () => applicationsApi.list(),
         retry: 2,
     });
+    const { data: userGroups = [], error: userGroupsError, refetch: refetchUserGroups } = useQuery({
+        queryKey: ['user-groups', true],
+        queryFn: () => userGroupsApi.list(true),
+        retry: 2,
+    });
 
     const showBtbTechLead = mode === 'edit' && ticketStatus && ASSIGNED_OR_LATER.includes(ticketStatus);
     const applicationIdsForTechLeads = formData.applicationIds?.length ? formData.applicationIds : undefined;
@@ -114,6 +126,15 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
             const has = current.includes(appId);
             const next = has ? current.filter(id => id !== appId) : [...current, appId];
             return { ...prev, applicationIds: next };
+        });
+    };
+
+    const toggleUserGroup = (groupId: number) => {
+        setFormData(prev => {
+            const current = prev.impactedUserGroupIds ?? [];
+            const has = current.includes(groupId);
+            const next = has ? current.filter(id => id !== groupId) : [...current, groupId];
+            return { ...prev, impactedUserGroupIds: next };
         });
     };
 
@@ -294,6 +315,23 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
                     <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">Tracking number for fix to prod / closing</p>
                 </div>
 
+                {/* DQ reference */}
+                <div className="sm:col-span-3">
+                    <label htmlFor="dqReference" className="block text-sm font-medium text-gray-700 dark:text-slate-300">DQ reference</label>
+                    <div className="mt-1">
+                        <input
+                            type="text"
+                            name="dqReference"
+                            id="dqReference"
+                            value={formData.dqReference || ''}
+                            onChange={handleChange}
+                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 dark:border-slate-500 rounded-md p-2 border bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                            placeholder="e.g. DQ-2026-00123"
+                        />
+                    </div>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">Data-quality tracking reference</p>
+                </div>
+
                 {/* Impacted applications: multi-select from configured applications */}
                 <div className="sm:col-span-6">
                     <span className="block text-sm font-medium text-gray-700 dark:text-slate-300 dark:text-slate-300">Impacted applications</span>
@@ -325,6 +363,56 @@ export default function TicketForm({ initialData, mode = 'create', ticketStatus,
                                 </button>
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* Impacted user groups */}
+                <div className="sm:col-span-6">
+                    <span className="block text-sm font-medium text-gray-700 dark:text-slate-300">Impacted user groups</span>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Select impacted business user groups for MI reporting.</p>
+                    <div className="mt-2 flex flex-wrap gap-3">
+                        {userGroups.map((group) => {
+                            const selected = (formData.impactedUserGroupIds ?? []).includes(group.id);
+                            return (
+                                <label key={group.id} className="inline-flex items-center gap-2 cursor-pointer rounded border border-gray-200 dark:border-slate-600 px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                                    <input
+                                        type="checkbox"
+                                        checked={selected}
+                                        onChange={() => toggleUserGroup(group.id)}
+                                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-slate-300">{group.name}{group.code ? ` (${group.code})` : ''}</span>
+                                </label>
+                            );
+                        })}
+                        {userGroups.length === 0 && !userGroupsError && (
+                            <span className="text-sm text-gray-500 dark:text-slate-400">No user groups configured. Add them in Admin → User Groups.</span>
+                        )}
+                        {userGroupsError && (
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm text-amber-600 dark:text-amber-400">Could not load user groups.</span>
+                                <span className="text-xs text-gray-500 dark:text-slate-400">{getApiErrorMessage(userGroupsError, 'Request failed')}</span>
+                                <button type="button" onClick={() => refetchUserGroups()} className="text-sm text-primary hover:underline text-left">
+                                    Retry loading user groups
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Impacted user group notes */}
+                <div className="sm:col-span-6">
+                    <label htmlFor="impactedUserGroupNotes" className="block text-sm font-medium text-gray-700 dark:text-slate-300">Impacted user group notes</label>
+                    <div className="mt-1">
+                        <textarea
+                            id="impactedUserGroupNotes"
+                            name="impactedUserGroupNotes"
+                            rows={2}
+                            value={formData.impactedUserGroupNotes || ''}
+                            onChange={handleChange}
+                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 dark:border-slate-500 rounded-md p-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                            placeholder="Optional free-text notes for non-standard impacted groups."
+                        />
                     </div>
                 </div>
 

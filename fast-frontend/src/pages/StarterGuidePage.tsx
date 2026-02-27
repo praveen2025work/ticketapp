@@ -102,9 +102,81 @@ export default function StarterGuidePage() {
           RTB Owner assigns to Admin or Tech Lead → Based on approvals, ticket moves to ACCEPTED → Tech Lead/Admin works on fix (IN_PROGRESS → ROOT_CAUSE → FIX_IN_PROGRESS → RESOLVED) →
           Admin closes (CLOSED). From CLOSED or REJECTED, Admin can move to ARCHIVED. When a ticket is Resolved, a Knowledge Base article is auto-created. If any Reviewer, Approver, or RTB Owner rejects, the ticket moves to REJECTED. Admin can also Close or Reject a ticket from BACKLOG, ASSIGNED, or ACCEPTED.
         </p>
+        <p className="text-slate-700 mb-3">
+          At ACCEPTED stage, BTB follow-up starts. The ticket stays blocked from <strong>IN_PROGRESS</strong> until a <strong>BTB Technical Lead</strong> is manually assigned. FAST always shows accepted items in the Approval Queue and can send accepted-ticket email alerts when the setting is enabled.
+        </p>
         <p className="text-slate-600 text-sm mb-3">
           <strong>Approval restriction:</strong> Only users linked to the ticket&apos;s Impacted applications (Admin → Users → Applications) can approve or reject that ticket. Admin can approve any ticket.
         </p>
+        <div className="mb-4">
+          <h3 className="text-sm font-medium text-slate-700 mb-2">Ownership and lifecycle map</h3>
+          <MermaidDiagram
+            id="ownership-lifecycle-map"
+            chart={`flowchart LR
+    A["BACKLOG<br/>Owner: ADMIN"] --> B["APPROVALS<br/>Owners: REVIEWER + APPROVER + RTB_OWNER"]
+    B --> C["ASSIGNED<br/>Owner: RTB_OWNER"]
+    C --> D["ACCEPTED<br/>Owner: RTB_OWNER (handover to BTB)"]
+    D --> E{"BTB Tech Lead Assigned?"}
+    E -->|No| F["Blocked: remain ACCEPTED<br/>Action: assign btbTechLeadUsername"]
+    E -->|Yes| G["IN_PROGRESS<br/>Owner: TECH_LEAD"]
+    G --> H["ROOT_CAUSE_IDENTIFIED<br/>Owner: TECH_LEAD"]
+    H --> I["FIX_IN_PROGRESS<br/>Owner: TECH_LEAD"]
+    I --> J["RESOLVED<br/>Owner: TECH_LEAD / PROJECT_MANAGER"]
+    J --> K["CLOSED<br/>Owner: ADMIN"]
+    K --> L["ARCHIVED<br/>Owner: ADMIN"]
+    D -. "Optional email (setting enabled)" .-> M["BTB Tech Lead Notification"]
+    D -. "Always visible" .-> N["Approval Queue: Accepted section"]`}
+          />
+        </div>
+        <div className="overflow-x-auto mb-4">
+          <h3 className="text-sm font-medium text-slate-700 mb-2">Owner responsibilities by status</h3>
+          <table className="w-full text-sm text-left border border-slate-200 rounded-lg overflow-hidden">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-4 py-2 font-semibold text-slate-700">Status</th>
+                <th className="px-4 py-2 font-semibold text-slate-700">Primary owner</th>
+                <th className="px-4 py-2 font-semibold text-slate-700">Key responsibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-2 font-medium text-slate-800">BACKLOG</td>
+                <td className="px-4 py-2 text-slate-600">ADMIN</td>
+                <td className="px-4 py-2 text-slate-600">Create ticket, capture DQ reference, impacted apps, impacted user groups.</td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-2 font-medium text-slate-800">APPROVALS</td>
+                <td className="px-4 py-2 text-slate-600">REVIEWER, APPROVER, RTB_OWNER</td>
+                <td className="px-4 py-2 text-slate-600">Complete role-based approval and routing decision.</td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-2 font-medium text-slate-800">ASSIGNED</td>
+                <td className="px-4 py-2 text-slate-600">RTB_OWNER</td>
+                <td className="px-4 py-2 text-slate-600">Confirm assignee and prepare handover to BTB execution owner.</td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-2 font-medium text-slate-800">ACCEPTED</td>
+                <td className="px-4 py-2 text-slate-600">RTB_OWNER + TECH_LEAD</td>
+                <td className="px-4 py-2 text-slate-600">Assign BTB technical lead and acknowledge follow-up notification.</td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-2 font-medium text-slate-800">IN_PROGRESS / ROOT_CAUSE_IDENTIFIED / FIX_IN_PROGRESS</td>
+                <td className="px-4 py-2 text-slate-600">TECH_LEAD</td>
+                <td className="px-4 py-2 text-slate-600">Drive investigation, root cause, workaround, and permanent fix updates.</td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-2 font-medium text-slate-800">RESOLVED</td>
+                <td className="px-4 py-2 text-slate-600">TECH_LEAD / PROJECT_MANAGER</td>
+                <td className="px-4 py-2 text-slate-600">Validate fix completion and finalize resolution details for KB article.</td>
+              </tr>
+              <tr className="border-b border-slate-100 last:border-0">
+                <td className="px-4 py-2 font-medium text-slate-800">CLOSED / ARCHIVED</td>
+                <td className="px-4 py-2 text-slate-600">ADMIN</td>
+                <td className="px-4 py-2 text-slate-600">Close out and archive ticket for reporting and audit retention.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-600">
           <span className="px-2 py-1 bg-slate-100 rounded">BACKLOG</span>
           <span>→</span>
@@ -172,6 +244,7 @@ export default function StarterGuidePage() {
           <li><strong>Email (SMTP)</strong> – Host, port, username, password, and From address. Used for sending email to assignees and for daily reports.</li>
           <li><strong>Daily Reports</strong> – Enable globally and per zone (APAC, EMEA, AMER). Set send time (HH:mm) and comma-separated recipients for each zone. Use <strong>Preview template</strong> to view how the daily report email will look before sending.</li>
           <li><strong>Ticket Email</strong> – Toggle to allow or disable sending email to the assignee from the ticket detail page.</li>
+          <li><strong>Accepted Ticket Email</strong> – Toggle to send BTB notification email when a ticket enters ACCEPTED.</li>
         </ul>
         <p className="text-slate-600 text-sm">
           The daily report template preview opens in a full-screen view. You can switch zone (APAC/EMEA/AMER), download the HTML, or copy it. Save settings after changing any email options.
@@ -187,6 +260,7 @@ export default function StarterGuidePage() {
           <li><strong>Settings</strong> – configure application settings, including email (SMTP), daily reports, and ticket email options. Use <strong>Preview template</strong> in Daily Reports to view the report email template.</li>
           <li><strong>Users</strong> – register new users and link them to applications. User–application mapping controls which approval tickets each user can approve.</li>
           <li><strong>Applications</strong> – manage Impacted applications used on tickets.</li>
+          <li><strong>User Groups</strong> – manage impacted-user-group master data used in ticket capture and MI reporting.</li>
         </ul>
       </section>
 

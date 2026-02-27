@@ -37,7 +37,13 @@ public class CreateFastProblemRequest {
 
     private String requestNumber;
 
+    private String dqReference;
+
     private List<Long> applicationIds;
+
+    private List<Long> impactedUserGroupIds;
+
+    private String impactedUserGroupNotes;
 
     /** Benefits justification – required for generating FAST ID (Finance Chennai PC & FC). */
     @NotBlank(message = "Benefits justification is required for FAST ID")

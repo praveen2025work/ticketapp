@@ -40,6 +40,19 @@ CREATE TABLE IF NOT EXISTS user_application (
 );
 CREATE INDEX IF NOT EXISTS idx_user_application_app ON user_application(application_id);
 
+-- USER_GROUP (admin-managed impacted user group catalog)
+CREATE TABLE IF NOT EXISTS user_group (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    code VARCHAR(50),
+    description VARCHAR(500),
+    active BOOLEAN DEFAULT TRUE,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_date TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_user_group_name ON user_group(name);
+CREATE INDEX IF NOT EXISTS idx_user_group_active ON user_group(active);
+
 -- FAST_PROBLEM (no regional_code; regions in fast_problem_region)
 CREATE TABLE IF NOT EXISTS fast_problem (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -51,6 +64,8 @@ CREATE TABLE IF NOT EXISTS fast_problem (
     user_impact_count INTEGER DEFAULT 0,
     affected_application VARCHAR(100),
     request_number VARCHAR(100),
+    dq_reference VARCHAR(100),
+    impacted_user_group_notes CLOB,
     anticipated_benefits CLOB,
     classification VARCHAR(10) DEFAULT 'A',
     ticket_age_days INTEGER DEFAULT 0,
@@ -88,6 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_fast_problem_deleted ON fast_problem(deleted);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_deleted_created ON fast_problem(deleted, created_date);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_affected_app ON fast_problem(affected_application);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_request_number ON fast_problem(request_number);
+CREATE INDEX IF NOT EXISTS idx_fast_problem_dq_reference ON fast_problem(dq_reference);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_resolved_date ON fast_problem(resolved_date);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_closed_date ON fast_problem(closed_date);
 CREATE INDEX IF NOT EXISTS idx_fast_problem_archived ON fast_problem(archived);
@@ -103,6 +119,16 @@ CREATE TABLE IF NOT EXISTS fast_problem_application (
     CONSTRAINT fk_fpa_application FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_fast_problem_application_app ON fast_problem_application(application_id);
+
+-- FAST_PROBLEM_USER_GROUP (ticket can impact one-to-many user groups)
+CREATE TABLE IF NOT EXISTS fast_problem_user_group (
+    fast_problem_id BIGINT NOT NULL,
+    user_group_id BIGINT NOT NULL,
+    PRIMARY KEY (fast_problem_id, user_group_id),
+    CONSTRAINT fk_fpug_problem FOREIGN KEY (fast_problem_id) REFERENCES fast_problem(id) ON DELETE CASCADE,
+    CONSTRAINT fk_fpug_user_group FOREIGN KEY (user_group_id) REFERENCES user_group(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_fast_problem_user_group_group ON fast_problem_user_group(user_group_id);
 
 -- APPROVAL_RECORD (one record per role: REVIEWER, APPROVER, RTB_OWNER; anyone with that role can approve)
 CREATE TABLE IF NOT EXISTS approval_record (
@@ -222,27 +248,52 @@ CREATE TABLE IF NOT EXISTS app_settings (
 CREATE INDEX IF NOT EXISTS idx_app_settings_key ON app_settings(setting_key);
 
 -- Local only: seed users for all roles (auth via X-Authenticated-User header). Username must match LDAP/login.
--- ADMIN (laks), REVIEWER (siresh), APPROVER (vivek), RTB_OWNER (kostas), TECH_LEAD (prav), READ_ONLY (rick)
 INSERT INTO users (username, brid, email, full_name, role, region, active) VALUES
-('admin', 'BR001', 'admin@enterprise.com', 'System Admin', 'ADMIN', 'AMER', true),
-('laks', 'BR002', 'laks@enterprise.com', 'Laks', 'ADMIN', 'AMER', true),
-('siresh', 'BR003', 'siresh@enterprise.com', 'Siresh', 'REVIEWER', 'AMER', true),
+('admin', 'BR001', 'admin@enterprise.com', 'Thenmozi', 'ADMIN', 'AMER', true),
+('laks', 'BR002', 'laks@enterprise.com', 'Lakshamana', 'ADMIN', 'AMER', true),
+('siresh', 'BR003', 'siresh@enterprise.com', 'Suresh', 'REVIEWER', 'AMER', true),
 ('vivek', 'BR004', 'vivek@enterprise.com', 'Vivek', 'APPROVER', 'AMER', true),
 ('kostas', 'BR005', 'kostas@enterprise.com', 'Kostas', 'RTB_OWNER', 'AMER', true),
-('prav', 'BR006', 'prav@enterprise.com', 'Prav', 'TECH_LEAD', 'AMER', true),
-('rick', 'BR007', 'rick@enterprise.com', 'Rick', 'READ_ONLY', 'AMER', true),
+('prav', 'BR006', 'prav@enterprise.com', 'praveen', 'TECH_LEAD', 'AMER', true),
+('rick', 'BR007', 'rick@enterprise.com', 'Sujith', 'READ_ONLY', 'AMER', true),
 ('pm', 'BR008', 'pm@enterprise.com', 'Project Manager', 'PROJECT_MANAGER', 'AMER', true);
 
--- Seed applications (local)
+-- Seed applications (local) from fast_sample_data.json -> reference_data.source_systems
 INSERT INTO applications (name, code, description) VALUES
-('Customer Portal', 'CP', 'Customer-facing web portal'),
-('Order Management', 'OM', 'Order processing and fulfillment'),
-('Payment Gateway', 'PG', 'Payment processing service'),
-('Inventory Service', 'INV', 'Inventory and stock management'),
-('Reporting Dashboard', 'RPT', 'Analytics and reporting');
+('MOTIF', 'MOTIF', 'Source system'),
+('RADIAL', 'RADIAL', 'Source system'),
+('SAP', 'SAP', 'Source system'),
+('FLEX', 'FLEX', 'Source system'),
+('Finstore/EDP', 'FINSTORE_EDP', 'Source system'),
+('RecFactory', 'RECFACTORY', 'Source system'),
+('Playpen', 'PLAYPEN', 'Source system'),
+('Workflow Engine', 'WORKFLOW_ENGINE', 'Source system'),
+('FAS', 'FAS', 'Source system'),
+('FinPortal', 'FINPORTAL', 'Source system'),
+('Download Center', 'DOWNLOAD_CENTER', 'Source system');
 
--- Link users to applications (admin/laks: all; others: sample assignments)
-INSERT INTO user_application (user_id, application_id) SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'admin' AND a.code IN ('CP', 'OM', 'PG');
-INSERT INTO user_application (user_id, application_id) SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'laks' AND a.code IN ('CP', 'OM', 'PG', 'INV', 'RPT');
-INSERT INTO user_application (user_id, application_id) SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'prav' AND a.code IN ('CP', 'INV');
-INSERT INTO user_application (user_id, application_id) SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'kostas' AND a.code IN ('OM', 'RPT');
+-- Seed impacted user groups (local)
+INSERT INTO user_group (name, code, description, active) VALUES
+('Product Control Producer', 'PC_PRODUCER', 'Product control producer user group', true),
+('Product Control Approver', 'PC_APPROVER', 'Product control approver user group', true),
+('Finance Control Producer', 'FIN_CTRL_PRODUCER', 'Finance control producer user group', true),
+('Finance Control Approver', 'FIN_CTRL', 'Finance control approver user group', true),
+('Operations Users', 'OPS', 'Operational users handling day-to-day processing', true);
+
+-- Link users to applications (admin/laks: all; others: simple assignments)
+INSERT INTO user_application (user_id, application_id)
+SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'admin';
+INSERT INTO user_application (user_id, application_id)
+SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'laks';
+INSERT INTO user_application (user_id, application_id)
+SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'siresh' AND a.code IN ('FINPORTAL', 'DOWNLOAD_CENTER');
+INSERT INTO user_application (user_id, application_id)
+SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'vivek' AND a.code IN ('MOTIF', 'RADIAL', 'SAP');
+INSERT INTO user_application (user_id, application_id)
+SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'kostas' AND a.code IN ('WORKFLOW_ENGINE', 'RECFACTORY', 'FAS');
+INSERT INTO user_application (user_id, application_id)
+SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'prav' AND a.code IN ('PLAYPEN', 'WORKFLOW_ENGINE', 'RECFACTORY', 'FAS');
+INSERT INTO user_application (user_id, application_id)
+SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'pm' AND a.code IN ('FINSTORE_EDP', 'FINPORTAL', 'DOWNLOAD_CENTER');
+INSERT INTO user_application (user_id, application_id)
+SELECT u.id, a.id FROM users u, applications a WHERE u.username = 'rick' AND a.code IN ('FAS', 'DOWNLOAD_CENTER');

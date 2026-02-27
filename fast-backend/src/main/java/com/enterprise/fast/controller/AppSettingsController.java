@@ -48,7 +48,7 @@ public class AppSettingsController {
                 zoneName = "APAC";
             }
             var openTickets = problemService.exportWithFilters(
-                    null, zoneName, null, null, null, null, "OPEN", null, null, null, null, null, 500);
+                    null, zoneName, null, null, null, null, "OPEN", null, null, null, null, null, null, 500);
             String html = dailyReportTemplateService.buildHtml(zoneName, LocalDate.now().toString(), openTickets);
             return ResponseEntity.ok(Map.of("html", html != null ? html : ""));
         } catch (Throwable e) {

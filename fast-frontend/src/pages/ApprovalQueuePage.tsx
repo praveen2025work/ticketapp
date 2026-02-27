@@ -31,13 +31,6 @@ export default function ApprovalQueuePage() {
     enabled: viewingTicketId != null,
   });
 
-  const { data: assignedTicketsData, isLoading: assignedLoading } = useQuery({
-    queryKey: ['problems', 'status', 'ASSIGNED'],
-    queryFn: () => problemApi.getByStatus('ASSIGNED', 0, 50),
-    enabled: true,
-  });
-  const assignedTickets = assignedTicketsData?.content ?? [];
-
   const { data: acceptedTicketsData, isLoading: acceptedLoading } = useQuery({
     queryKey: ['problems', 'status', 'ACCEPTED'],
     queryFn: () => problemApi.getByStatus('ACCEPTED', 0, 50),
@@ -49,7 +42,6 @@ export default function ApprovalQueuePage() {
     mutationFn: ({ id, status }: { id: number; status: string }) => problemApi.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['problems'] });
-      queryClient.invalidateQueries({ queryKey: ['problems', 'status', 'ASSIGNED'] });
       queryClient.invalidateQueries({ queryKey: ['problems', 'status', 'ACCEPTED'] });
     },
   });
@@ -205,88 +197,62 @@ export default function ApprovalQueuePage() {
         </div>
       )}
 
-      {/* Tickets with approvals complete — ASSIGNED: move to Accepted; ACCEPTED: move to In Progress */}
+      {/* Tickets with approvals complete — auto moved to ACCEPTED; admin can move to In Progress */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
           Action items — approvals complete
         </h2>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-          Tickets that have passed all approvals. {isAdmin ? 'Assign BTB Tech Lead, then move to Accepted, then In Progress.' : 'View only — only Admin can move status.'}
+          Tickets that have passed all approvals and were auto-moved to Accepted. {isAdmin ? 'Assign BTB Tech Lead, then move to In Progress.' : 'View only — only Admin can move status.'}
         </p>
 
-        {(assignedLoading || acceptedLoading) ? (
+        {acceptedLoading ? (
           <p className="text-sm text-slate-500">Loading...</p>
-        ) : assignedTickets.length === 0 && acceptedTickets.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No tickets in Assigned or Accepted status.</p>
+        ) : acceptedTickets.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">No tickets in Accepted status.</p>
         ) : (
           <div className="space-y-6">
-            {assignedTickets.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Assigned — move to Accepted</h3>
-                <ul className="space-y-2">
-                  {assignedTickets.map((t) => (
-                    <li
-                      key={t.id}
-                      className="flex flex-wrap items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"
-                    >
-                      <span className="font-mono text-sm text-slate-500 dark:text-slate-400">#{t.id}</span>
-                      <span className="flex-1 min-w-0 truncate text-slate-900 dark:text-slate-100">{t.title}</span>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/tickets/${t.id}`)}
-                          className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                        >
-                          Open ticket
-                        </button>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => statusMutation.mutate({ id: t.id, status: 'ACCEPTED' })}
-                            disabled={statusMutation.isPending && statusMutation.variables?.id === t.id}
-                            className="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-50"
-                          >
-                            {statusMutation.isPending && statusMutation.variables?.id === t.id ? 'Updating...' : 'Move to Accepted'}
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
             {acceptedTickets.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Accepted — move to In Progress</h3>
                 <ul className="space-y-2">
-                  {acceptedTickets.map((t) => (
-                    <li
-                      key={t.id}
-                      className="flex flex-wrap items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"
-                    >
-                      <span className="font-mono text-sm text-slate-500 dark:text-slate-400">#{t.id}</span>
-                      <span className="flex-1 min-w-0 truncate text-slate-900 dark:text-slate-100">{t.title}</span>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/tickets/${t.id}`)}
-                          className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                        >
-                          Open ticket
-                        </button>
-                        {isAdmin && (
+                  {acceptedTickets.map((t) => {
+                    const missingTechLead = !t.btbTechLeadUsername;
+                    return (
+                      <li
+                        key={t.id}
+                        className={`flex flex-wrap items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0 ${missingTechLead ? 'bg-amber-50/60 dark:bg-amber-900/20 rounded-md px-2' : ''}`}
+                      >
+                        <span className="font-mono text-sm text-slate-500 dark:text-slate-400">#{t.id}</span>
+                        <span className="flex-1 min-w-0 truncate text-slate-900 dark:text-slate-100">{t.title}</span>
+                        {missingTechLead && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">
+                            Assign BTB Tech Lead first
+                          </span>
+                        )}
+                        <div className="flex gap-2">
                           <button
                             type="button"
-                            onClick={() => statusMutation.mutate({ id: t.id, status: 'IN_PROGRESS' })}
-                            disabled={statusMutation.isPending && statusMutation.variables?.id === t.id}
-                            className="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-50"
+                            onClick={() => navigate(`/tickets/${t.id}`)}
+                            className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
                           >
-                            {statusMutation.isPending && statusMutation.variables?.id === t.id ? 'Updating...' : 'Move to In Progress'}
+                            Open ticket
                           </button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => statusMutation.mutate({ id: t.id, status: 'IN_PROGRESS' })}
+                              disabled={(statusMutation.isPending && statusMutation.variables?.id === t.id) || missingTechLead}
+                              className="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={missingTechLead ? 'Open ticket and assign BTB Tech Lead before moving to In Progress' : 'Move to In Progress'}
+                            >
+                              {statusMutation.isPending && statusMutation.variables?.id === t.id ? 'Updating...' : 'Move to In Progress'}
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}

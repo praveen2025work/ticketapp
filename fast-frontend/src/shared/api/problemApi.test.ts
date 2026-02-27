@@ -64,7 +64,7 @@ describe('problemApi', () => {
       data: { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, last: true },
     });
     await problemApi.getWithFilters(
-      { q: 'search', region: 'AMER', classification: 'A' },
+      { q: 'search', region: 'AMER', classification: 'A', impactedUserGroupId: 12 },
       0,
       20
     );
@@ -73,6 +73,7 @@ describe('problemApi', () => {
         q: 'search',
         region: 'AMER',
         classification: 'A',
+        impactedUserGroupId: 12,
         page: 0,
         size: 20,
       }),

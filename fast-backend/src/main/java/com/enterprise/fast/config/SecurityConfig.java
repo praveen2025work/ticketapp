@@ -83,10 +83,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/tech-leads").hasAnyRole("ADMIN", "RTB_OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/applications").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/users/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/applications", "/api/v1/applications/*").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/applications").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/applications/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/applications/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/user-groups", "/api/v1/user-groups/*").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/user-groups").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/user-groups/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/user-groups/*/deactivate").hasRole("ADMIN")
 
                         // All other authenticated endpoints
                         .anyRequest().authenticated())

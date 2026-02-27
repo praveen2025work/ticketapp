@@ -36,7 +36,7 @@ const btnIcon = 'inline-block w-5 h-5 shrink-0';
 const btnBase = 'inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50';
 const btnIconOnly = 'inline-flex items-center justify-center p-2 rounded-xl text-sm transition-colors disabled:opacity-50';
 
-export type TicketListFilters = { q?: string; region?: string; classification?: string; application?: string; status?: string; fromDate?: string; toDate?: string; ageMin?: number; ageMax?: number; minImpact?: number; priority?: number };
+export type TicketListFilters = { q?: string; region?: string; classification?: string; application?: string; status?: string; fromDate?: string; toDate?: string; ageMin?: number; ageMax?: number; minImpact?: number; priority?: number; impactedUserGroupId?: number };
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -131,6 +131,7 @@ export default function TicketDetailPage() {
     if (f?.ageMax != null && f.ageMax >= 0) params.set('ageMax', String(f.ageMax));
     if (f?.minImpact != null && f.minImpact >= 0) params.set('minImpact', String(f.minImpact));
     if (f?.priority != null && f.priority >= 1 && f.priority <= 5) params.set('priority', String(f.priority));
+    if (f?.impactedUserGroupId != null && f.impactedUserGroupId > 0) params.set('impactedUserGroupId', String(f.impactedUserGroupId));
     const qs = params.toString();
     return `/tickets${qs ? `?${qs}` : ''}`;
   };
@@ -159,7 +160,6 @@ export default function TicketDetailPage() {
     RESOLVED: 'CLOSED',
     CLOSED: 'ARCHIVED',
   };
-
   if (isLoading) return <LoadingSpinner message="Loading ticket..." />;
   if (error || !ticket) {
     const apiError = error ? getApiError(error) : null;
@@ -175,6 +175,7 @@ export default function TicketDetailPage() {
     );
   }
 
+  const requiresBtbLeadForNextStep = ticket.status === 'ACCEPTED' && nextStatusMap[ticket.status] === 'IN_PROGRESS' && !ticket.btbTechLeadUsername;
   const isAging = !['RESOLVED', 'CLOSED', 'ARCHIVED'].includes(ticket.status) && (ticket.ticketAgeDays ?? 0) >= 20;
 
   const hasCommentInLast24h = (): boolean => {
@@ -241,9 +242,13 @@ export default function TicketDetailPage() {
               <span className="text-sm text-slate-500 italic">Submitted for approval</span>
             )}
             {nextStatusMap[ticket.status] && (user?.role === 'ADMIN' || user?.role === 'RTB_OWNER' || user?.role === 'TECH_LEAD') && (
-              <button onClick={() => statusMutation.mutate(nextStatusMap[ticket.status])} disabled={actionLoading}
+              <button
+                onClick={() => statusMutation.mutate(nextStatusMap[ticket.status])}
+                disabled={actionLoading || requiresBtbLeadForNextStep}
                 className={`${btnBase} bg-primary text-white hover:bg-primary-hover`}
-                title={`Move to ${nextStatusMap[ticket.status].replace(/_/g, ' ')}`}>
+                title={requiresBtbLeadForNextStep
+                  ? 'Assign BTB Tech Lead before moving to In Progress'
+                  : `Move to ${nextStatusMap[ticket.status].replace(/_/g, ' ')}`}>
                 <ArrowRightIcon className={btnIcon} aria-hidden />
                 Move to {STATUS_LABELS[nextStatusMap[ticket.status]] ?? nextStatusMap[ticket.status]?.replace(/_/g, ' ')}
               </button>
@@ -702,6 +707,9 @@ export default function TicketDetailPage() {
               {ticket.requestNumber && (
                 <div className="flex justify-between gap-2"><dt className="text-slate-500 dark:text-slate-400">Request #</dt><dd className="font-mono text-slate-900 dark:text-slate-100">{ticket.requestNumber}</dd></div>
               )}
+              {ticket.dqReference && (
+                <div className="flex justify-between gap-2"><dt className="text-slate-500 dark:text-slate-400">DQ Ref</dt><dd className="font-mono text-slate-900 dark:text-slate-100">{ticket.dqReference}</dd></div>
+              )}
             </dl>
           </div>
 
@@ -733,6 +741,24 @@ export default function TicketDetailPage() {
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+              {ticket.impactedUserGroups && ticket.impactedUserGroups.length > 0 && (
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block mb-1">Impacted user groups</span>
+                  <div className="flex flex-wrap gap-1">
+                    {ticket.impactedUserGroups.map((g) => (
+                      <span key={g.id} className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-xs">
+                        {g.name}{g.code ? ` (${g.code})` : ''}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {ticket.impactedUserGroupNotes && (
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block mb-1">Group notes</span>
+                  <span className="text-slate-900 dark:text-slate-100 text-sm whitespace-pre-wrap">{ticket.impactedUserGroupNotes}</span>
                 </div>
               )}
             </div>

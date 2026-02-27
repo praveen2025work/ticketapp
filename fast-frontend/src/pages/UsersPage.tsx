@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../shared/context/AuthContext';
-import { usersApi, type RegisterPayload, type UserResponse } from '../shared/api/usersApi';
+import { usersApi, type RegisterPayload, type UpdateUserPayload, type UserResponse } from '../shared/api/usersApi';
 import { applicationsApi } from '../shared/api/applicationsApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ApiErrorState from '../components/ApiErrorState';
@@ -15,12 +15,21 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [assignUser, setAssignUser] = useState<UserResponse | null>(null);
+  const [editUser, setEditUser] = useState<UserResponse | null>(null);
   const [form, setForm] = useState<RegisterPayload>({
     username: '',
     email: '',
     fullName: '',
     role: 'READ_ONLY',
     region: 'AMER',
+  });
+  const [editForm, setEditForm] = useState<Required<Pick<UpdateUserPayload, 'username' | 'email' | 'fullName' | 'role' | 'active'>> & { region: string }>({
+    username: '',
+    email: '',
+    fullName: '',
+    role: 'READ_ONLY',
+    region: 'AMER',
+    active: true,
   });
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
@@ -54,6 +63,15 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
     },
   });
 
+  const updateUserMutation = useMutation({
+    mutationFn: ({ userId, payload }: { userId: number; payload: UpdateUserPayload }) =>
+      usersApi.update(userId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setEditUser(null);
+    },
+  });
+
   if (isLoading && !isRefetching) return <LoadingSpinner message="Loading users..." />;
   if (error) {
     return (
@@ -68,6 +86,18 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
 
   const users = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
+
+  const openEdit = (u: UserResponse) => {
+    setEditUser(u);
+    setEditForm({
+      username: u.username,
+      email: u.email,
+      fullName: u.fullName,
+      role: u.role,
+      region: u.region ?? 'AMER',
+      active: u.active,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -214,6 +244,116 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
         </div>
       )}
 
+      {!readOnly && editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Edit user: {editUser.fullName}</h2>
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateUserMutation.mutate({
+                  userId: editUser.id,
+                  payload: {
+                    username: editForm.username.trim().toLowerCase(),
+                    email: editForm.email.trim(),
+                    fullName: editForm.fullName.trim(),
+                    role: editForm.role,
+                    region: editForm.region,
+                    active: editForm.active,
+                  },
+                });
+              }}
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.username}
+                  onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.fullName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                  <select
+                    value={editForm.region}
+                    onChange={(e) => setEditForm((f) => ({ ...f, region: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                  >
+                    {REGIONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editForm.active}
+                  onChange={(e) => setEditForm((f) => ({ ...f, active: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-700">Active</span>
+              </label>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={updateUserMutation.isPending}
+                  className="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-hover disabled:opacity-50"
+                >
+                  {updateUserMutation.isPending ? 'Saving...' : 'Save changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditUser(null)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+              {updateUserMutation.isError && (
+                <p className="text-sm text-rose-600">{String(updateUserMutation.error)}</p>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -225,6 +365,7 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
               {!readOnly && <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Applications</th>}
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
+              {!readOnly && <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -247,6 +388,17 @@ export default function UsersPage({ embedded, readOnly }: { embedded?: boolean; 
                   </td>
                 )}
                 <td className="px-4 py-2 text-sm">{u.active ? 'Yes' : 'No'}</td>
+                {!readOnly && (
+                  <td className="px-4 py-2 text-sm">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(u)}
+                      className="text-primary hover:underline text-xs"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

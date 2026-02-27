@@ -36,6 +36,7 @@ export type BackFilters = {
   ageMax?: number;
   minImpact?: number;
   priority?: number;
+  impactedUserGroupId?: number;
 };
 
 interface TicketTableProps {

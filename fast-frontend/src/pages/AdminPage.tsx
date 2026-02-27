@@ -2,14 +2,16 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../shared/context/AuthContext';
 import SettingsPage from './SettingsPage';
 import ApplicationsPage from './ApplicationsPage';
+import UserGroupsPage from './UserGroupsPage';
 import UsersPage from './UsersPage';
 import AuditLogPage from './AuditLogPage';
 
-type AdminTab = 'settings' | 'applications' | 'users' | 'audit';
+type AdminTab = 'settings' | 'applications' | 'user-groups' | 'users' | 'audit';
 
 const TABS: { id: AdminTab; label: string }[] = [
   { id: 'settings', label: 'Settings' },
   { id: 'applications', label: 'Applications' },
+  { id: 'user-groups', label: 'User Groups' },
   { id: 'users', label: 'Users' },
   { id: 'audit', label: 'Audit Log' },
 ];
@@ -60,6 +62,7 @@ export default function AdminPage() {
       <div className="min-h-[400px] pt-2">
         {activeTab === 'settings' && <SettingsPage embedded readOnly={!isAdmin} />}
         {activeTab === 'applications' && <ApplicationsPage embedded readOnly={!isAdmin} />}
+        {activeTab === 'user-groups' && <UserGroupsPage embedded readOnly={!isAdmin} />}
         {activeTab === 'users' && <UsersPage embedded readOnly={!isAdmin} />}
         {activeTab === 'audit' && <AuditLogPage embedded />}
       </div>

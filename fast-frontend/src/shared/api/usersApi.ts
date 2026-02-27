@@ -22,6 +22,15 @@ export interface RegisterPayload {
   region?: string;
 }
 
+export interface UpdateUserPayload {
+  username?: string;
+  email?: string;
+  fullName?: string;
+  role?: string;
+  region?: string | null;
+  active?: boolean;
+}
+
 export const usersApi = {
   list: async (page = 0, size = 20): Promise<PagedResponse<UserResponse>> => {
     const response = await axiosClient.get<PagedResponse<UserResponse>>('/users', { params: { page, size } });
@@ -46,6 +55,11 @@ export const usersApi = {
 
   updateApplications: async (userId: number, applicationIds: number[]): Promise<UserResponse> => {
     const response = await axiosClient.put<UserResponse>(`/users/${userId}/applications`, applicationIds);
+    return response.data;
+  },
+
+  update: async (userId: number, payload: UpdateUserPayload): Promise<UserResponse> => {
+    const response = await axiosClient.put<UserResponse>(`/users/${userId}`, payload);
     return response.data;
   },
 };

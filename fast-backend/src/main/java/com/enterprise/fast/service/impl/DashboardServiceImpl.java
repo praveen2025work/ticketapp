@@ -106,8 +106,8 @@ public class DashboardServiceImpl implements DashboardService {
         ResolvedMetrics resolvedMetrics = computeResolvedMetrics(resolvedListSpec);
 
         Specification<FastProblem> archivedSpec = periodFrom != null
-                ? FastProblemSpecification.withFilters(null, region, null, application, periodFrom, periodTo, null, null, "ARCHIVED", null, null, null, null, null)
-                : FastProblemSpecification.withFilters(null, region, null, application, null, null, null, null, "ARCHIVED", null, null, null, null, null);
+                ? FastProblemSpecification.withFilters(null, region, null, application, periodFrom, periodTo, null, null, "ARCHIVED", null, null, null, null, null, null)
+                : FastProblemSpecification.withFilters(null, region, null, application, null, null, null, null, "ARCHIVED", null, null, null, null, null, null);
 
         long totalArchived = problemRepository.count(archivedSpec);
         return DashboardMetricsResponse.builder()
@@ -308,7 +308,7 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     private Specification<FastProblem> resolvedSpecAll() {
-        return FastProblemSpecification.withFilters(null, null, null, null, null, null, null, null, null)
+        return FastProblemSpecification.withFilters(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
                 .and((root, q, cb) -> root.get("status").in(RESOLVED_STATUS_LIST));
     }
 

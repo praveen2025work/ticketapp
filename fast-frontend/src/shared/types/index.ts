@@ -50,6 +50,16 @@ export interface ApplicationRef {
   updatedDate?: string | null;
 }
 
+export interface UserGroupRef {
+  id: number;
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  active?: boolean;
+  createdDate?: string;
+  updatedDate?: string | null;
+}
+
 // Response Types
 export interface FastProblem {
   id: number;
@@ -61,7 +71,10 @@ export interface FastProblem {
   userImpactCount: number;
   affectedApplication: string;
   requestNumber?: string;
+  dqReference?: string;
   applications?: ApplicationRef[];
+  impactedUserGroups?: UserGroupRef[];
+  impactedUserGroupNotes?: string;
   anticipatedBenefits: string;
   classification: Classification;
   regionalCodes: RegionalCode[];
@@ -216,7 +229,10 @@ export interface CreateFastProblemRequest {
   userImpactCount?: number;
   affectedApplication?: string;
   requestNumber?: string;
+  dqReference?: string;
   applicationIds?: number[];
+  impactedUserGroupIds?: number[];
+  impactedUserGroupNotes?: string;
   anticipatedBenefits?: string;
   regionalCodes: RegionalCode[];
   targetResolutionHours?: number;
@@ -235,7 +251,10 @@ export interface UpdateFastProblemRequest {
   userImpactCount?: number;
   affectedApplication?: string;
   requestNumber?: string;
+  dqReference?: string;
   applicationIds?: number[];
+  impactedUserGroupIds?: number[];
+  impactedUserGroupNotes?: string;
   anticipatedBenefits?: string;
   regionalCodes?: RegionalCode[];
   targetResolutionHours?: number;

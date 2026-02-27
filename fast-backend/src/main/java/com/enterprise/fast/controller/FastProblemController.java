@@ -54,6 +54,7 @@ public class FastProblemController {
             @RequestParam(required = false) Integer ageMax,
             @RequestParam(required = false) Integer minImpact,
             @RequestParam(required = false) Integer priority,
+            @RequestParam(required = false) Long impactedUserGroupId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdDate") String sortBy,
@@ -64,9 +65,9 @@ public class FastProblemController {
                 || fromDate != null || toDate != null
                 || (status != null && !status.isBlank())
                 || (ragStatus != null && !ragStatus.isBlank())
-                || ageMin != null || ageMax != null || minImpact != null || priority != null;
+                || ageMin != null || ageMax != null || minImpact != null || priority != null || impactedUserGroupId != null;
         if (hasFilters) {
-            return ResponseEntity.ok(problemService.findWithFilters(q, region, classification, application, fromDate, toDate, status, ragStatus, ageMin, ageMax, minImpact, priority, page, size, sortBy, direction));
+            return ResponseEntity.ok(problemService.findWithFilters(q, region, classification, application, fromDate, toDate, status, ragStatus, ageMin, ageMax, minImpact, priority, impactedUserGroupId, page, size, sortBy, direction));
         }
         return ResponseEntity.ok(problemService.getAll(page, size, sortBy, direction));
     }
@@ -238,8 +239,9 @@ public class FastProblemController {
             @RequestParam(required = false) Integer ageMax,
             @RequestParam(required = false) Integer minImpact,
             @RequestParam(required = false) Integer priority,
+            @RequestParam(required = false) Long impactedUserGroupId,
             @RequestParam(defaultValue = "1000") int limit) {
-        List<FastProblemResponse> data = problemService.exportWithFilters(q, region, classification, application, fromDate, toDate, status, ragStatus, ageMin, ageMax, minImpact, priority, limit);
+        List<FastProblemResponse> data = problemService.exportWithFilters(q, region, classification, application, fromDate, toDate, status, ragStatus, ageMin, ageMax, minImpact, priority, impactedUserGroupId, limit);
         String csv = toCsv(data);
         byte[] utf8Bom = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
         byte[] csvBytes = csv.getBytes(StandardCharsets.UTF_8);
@@ -254,10 +256,15 @@ public class FastProblemController {
 
     private String toCsv(List<FastProblemResponse> data) {
         StringBuilder sb = new StringBuilder();
-        sb.append("id,title,pbtId,incidentNumber,problemNumber,classification,regions,status,userImpact,priority,confluenceLink,createdBy,createdDate\n");
+        sb.append("id,title,pbtId,incidentNumber,problemNumber,classification,regions,status,userImpact,priority,dqReference,impactedUserGroups,impactedUserGroupNotes,confluenceLink,createdBy,createdDate\n");
         if (data == null) return sb.toString();
         for (FastProblemResponse r : data) {
             if (r == null) continue;
+            String impactedGroups = r.getImpactedUserGroups() == null ? "" : r.getImpactedUserGroups().stream()
+                    .filter(g -> g != null && g.getName() != null && !g.getName().isBlank())
+                    .map(g -> g.getCode() != null && !g.getCode().isBlank() ? g.getName() + " (" + g.getCode() + ")" : g.getName())
+                    .distinct()
+                    .collect(java.util.stream.Collectors.joining(";"));
             sb.append(escapeCsv(r.getId())).append(",");
             sb.append(escapeCsv(r.getTitle())).append(",");
             sb.append(escapeCsv(r.getPbtId())).append(",");
@@ -268,6 +275,9 @@ public class FastProblemController {
             sb.append(escapeCsv(r.getStatus())).append(",");
             sb.append(r.getUserImpactCount() != null ? r.getUserImpactCount() : "").append(",");
             sb.append(r.getPriority() != null ? r.getPriority() : "").append(",");
+            sb.append(escapeCsv(r.getDqReference())).append(",");
+            sb.append(escapeCsv(impactedGroups)).append(",");
+            sb.append(escapeCsv(r.getImpactedUserGroupNotes())).append(",");
             sb.append(escapeCsv(r.getConfluenceLink())).append(",");
             sb.append(escapeCsv(r.getCreatedBy())).append(",");
             sb.append(escapeCsv(r.getCreatedDate() != null ? r.getCreatedDate().toString() : "")).append("\n");

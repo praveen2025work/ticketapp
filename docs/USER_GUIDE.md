@@ -116,7 +116,10 @@ Only **RTB_TEAM**, **SERVICE_DESK**, and **ADMIN** can create tickets.
 2. Fill in the form:
    - **Title** (required)
    - **Description**
+   - **DQ Reference** (optional)
    - **Regional code** (e.g. APAC, EMEA, AMER)
+   - **Impacted user groups** (multi-select from admin-managed list)
+   - **Impacted user group notes** (free-text details)
    - **Target resolution hours**
    - **Priority** (if used)
    - **Assigned to**, **Assignment group**
@@ -138,6 +141,37 @@ On a ticket’s detail page you see:
 - **Knowledge article** (if one was created when the ticket was resolved).
 - **Incident links** (if any).
 
+### Ownership and lifecycle diagram
+
+```mermaid
+flowchart LR
+  A["BACKLOG<br/>Owner: ADMIN"] --> B["APPROVALS<br/>Owners: REVIEWER + APPROVER + RTB_OWNER"]
+  B --> C["ASSIGNED<br/>Owner: RTB_OWNER"]
+  C --> D["ACCEPTED<br/>Owner: RTB_OWNER (handover to BTB)"]
+  D --> E{"BTB Tech Lead Assigned?"}
+  E -->|No| F["Blocked at ACCEPTED<br/>Assign btbTechLeadUsername"]
+  E -->|Yes| G["IN_PROGRESS<br/>Owner: TECH_LEAD"]
+  G --> H["ROOT_CAUSE_IDENTIFIED<br/>Owner: TECH_LEAD"]
+  H --> I["FIX_IN_PROGRESS<br/>Owner: TECH_LEAD"]
+  I --> J["RESOLVED<br/>Owner: TECH_LEAD / PROJECT_MANAGER"]
+  J --> K["CLOSED<br/>Owner: ADMIN"]
+  K --> L["ARCHIVED<br/>Owner: ADMIN"]
+  D -. "Optional email (setting enabled)" .-> M["BTB Tech Lead Notification"]
+  D -. "Always visible" .-> N["Approval Queue: Accepted section"]
+```
+
+### Owner responsibilities by status
+
+| Status | Primary owner | Responsibility |
+|------|----------------|----------------|
+| **BACKLOG** | ADMIN | Create ticket and capture structured fields (DQ reference, impacted user groups, notes). |
+| **APPROVALS** | REVIEWER, APPROVER, RTB_OWNER | Complete role-based approval/rejection decision. |
+| **ASSIGNED** | RTB_OWNER | Confirm handover and assignment readiness. |
+| **ACCEPTED** | RTB_OWNER + TECH_LEAD | Assign BTB technical lead; accepted ticket notifications can be sent based on settings. |
+| **IN_PROGRESS / ROOT_CAUSE_IDENTIFIED / FIX_IN_PROGRESS** | TECH_LEAD | Execute investigation/fix and keep technical updates current. |
+| **RESOLVED** | TECH_LEAD / PROJECT_MANAGER | Validate completion and resolution quality. |
+| **CLOSED / ARCHIVED** | ADMIN | Close ticket and preserve data for reporting/audit. |
+
 **Aging:** If a ticket is open for a long time (e.g. 20+ days) and not Resolved/Closed, an “Aging ticket” warning is shown so it can be prioritized.
 
 **Buttons you may see (depending on your role):**
@@ -150,6 +184,7 @@ On a ticket’s detail page you see:
   - Visible for TECHNICIAN, PROBLEM_MANAGER, or ADMIN.  
   - Moves the ticket to the next step, e.g.  
     **Assigned** → **Accepted** → **In progress** → **Root cause identified** → **Fix in progress** → **Resolved** → **Closed**.
+  - For **Accepted → In progress**, FAST blocks the transition until a BTB Technical Lead is assigned.
 
 - **Edit**  
   - TECHNICIAN, PROBLEM_MANAGER, or ADMIN can open the **Edit** form to change title, description, root cause, workaround, permanent fix, assignment, Confluence link, etc.

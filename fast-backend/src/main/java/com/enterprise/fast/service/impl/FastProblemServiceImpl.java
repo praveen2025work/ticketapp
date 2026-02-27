@@ -3,6 +3,7 @@ package com.enterprise.fast.service.impl;
 import com.enterprise.fast.domain.entity.Application;
 import com.enterprise.fast.domain.entity.FastProblem;
 import com.enterprise.fast.domain.entity.User;
+import com.enterprise.fast.domain.entity.UserGroup;
 import com.enterprise.fast.domain.enums.*;
 import com.enterprise.fast.dto.request.CreateFastProblemRequest;
 import com.enterprise.fast.dto.request.UpdateFastProblemRequest;
@@ -19,6 +20,7 @@ import com.enterprise.fast.repository.FastProblemPropertyRepository;
 import com.enterprise.fast.repository.FastProblemRepository;
 import com.enterprise.fast.repository.FastProblemSpecification;
 import com.enterprise.fast.repository.UserRepository;
+import com.enterprise.fast.repository.UserGroupRepository;
 import com.enterprise.fast.service.AppSettingsService;
 import com.enterprise.fast.service.AuditLogService;
 import com.enterprise.fast.service.EmailService;
@@ -36,8 +38,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +53,7 @@ public class FastProblemServiceImpl implements FastProblemService {
     private final FastProblemPropertyRepository propertyRepository;
     private final FastProblemLinkRepository linkRepository;
     private final ApplicationRepository applicationRepository;
+    private final UserGroupRepository userGroupRepository;
     private final UserRepository userRepository;
     private final AppSettingsService appSettingsService;
     private final EmailService emailService;
@@ -77,6 +84,12 @@ public class FastProblemServiceImpl implements FastProblemService {
             problem.getApplications().clear();
             problem.getApplications().addAll(apps);
         }
+        if (request.getImpactedUserGroupIds() != null) {
+            problem.getUserGroups().clear();
+            problem.getUserGroups().addAll(resolveUserGroups(request.getImpactedUserGroupIds()));
+        }
+        problem.setDqReference(normalizeOptionalText(request.getDqReference()));
+        problem.setImpactedUserGroupNotes(normalizeOptionalText(request.getImpactedUserGroupNotes()));
 
         FastProblem saved = repository.save(problem);
 
@@ -124,7 +137,7 @@ public class FastProblemServiceImpl implements FastProblemService {
         TicketStatus ticketStatus = TicketStatus.valueOf(status.toUpperCase());
         Page<FastProblem> problemPage;
         if (ticketStatus == TicketStatus.ARCHIVED) {
-            Specification<FastProblem> spec = FastProblemSpecification.withFilters(null, null, null, null, null, null, null, null, "ARCHIVED", null, null, null, null, null);
+            Specification<FastProblem> spec = FastProblemSpecification.withFilters(null, null, null, null, null, null, null, null, "ARCHIVED", null, null, null, null, null, null);
             problemPage = repository.findAll(spec, PageRequest.of(page, size, Sort.by("closedDate").descending()));
         } else {
             problemPage = repository.findByStatusAndDeletedFalseAndArchivedFalse(ticketStatus, PageRequest.of(page, size));
@@ -144,9 +157,9 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Transactional(readOnly = true)
     public PagedResponse<FastProblemResponse> findWithFilters(String keyword, String regionCode, String classification,
                                                               String application, LocalDate fromDate, LocalDate toDate,
-                                                              String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority,
+                                                              String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority, Long impactedUserGroupId,
                                                               int page, int size, String sortBy, String direction) {
-        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, status, ragStatus, ageMin, ageMax, minImpact, priority);
+        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, status, ragStatus, ageMin, ageMax, minImpact, priority, impactedUserGroupId);
         Sort sort = direction.equalsIgnoreCase("desc") ?
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -158,8 +171,8 @@ public class FastProblemServiceImpl implements FastProblemService {
     @Transactional(readOnly = true)
     public List<FastProblemResponse> exportWithFilters(String keyword, String regionCode, String classification,
                                                        String application, LocalDate fromDate, LocalDate toDate,
-                                                       String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority, int limit) {
-        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, status, ragStatus, ageMin, ageMax, minImpact, priority);
+                                                       String status, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority, Long impactedUserGroupId, int limit) {
+        Specification<FastProblem> spec = FastProblemSpecification.withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, status, ragStatus, ageMin, ageMax, minImpact, priority, impactedUserGroupId);
         Pageable pageable = PageRequest.of(0, Math.min(limit, 10000), Sort.by("createdDate").descending());
         return repository.findAll(spec, pageable).getContent().stream()
                 .map(mapper::toSummaryResponse)
@@ -196,12 +209,22 @@ public class FastProblemServiceImpl implements FastProblemService {
         if (request.getRequestNumber() != null) {
             problem.setRequestNumber(request.getRequestNumber().trim().isEmpty() ? null : request.getRequestNumber().trim());
         }
+        if (request.getDqReference() != null) {
+            problem.setDqReference(normalizeOptionalText(request.getDqReference()));
+        }
         if (request.getApplicationIds() != null) {
             problem.getApplications().clear();
             if (!request.getApplicationIds().isEmpty()) {
                 List<Application> apps = applicationRepository.findAllById(request.getApplicationIds());
                 problem.getApplications().addAll(apps);
             }
+        }
+        if (request.getImpactedUserGroupIds() != null) {
+            problem.getUserGroups().clear();
+            problem.getUserGroups().addAll(resolveUserGroups(request.getImpactedUserGroupIds()));
+        }
+        if (request.getImpactedUserGroupNotes() != null) {
+            problem.setImpactedUserGroupNotes(normalizeOptionalText(request.getImpactedUserGroupNotes()));
         }
         if (request.getAnticipatedBenefits() != null) {
             problem.setAnticipatedBenefits(request.getAnticipatedBenefits());
@@ -252,6 +275,7 @@ public class FastProblemServiceImpl implements FastProblemService {
         if (request.getAssignmentGroup() != null) {
             problem.setAssignmentGroup(request.getAssignmentGroup());
         }
+        String oldBtbTechLead = problem.getBtbTechLeadUsername();
         if (request.getBtbTechLeadUsername() != null && !request.getBtbTechLeadUsername().isBlank()) {
             applyBtbTechLead(problem, request.getBtbTechLeadUsername().trim());
         } else if (request.getBtbTechLeadUsername() != null && request.getBtbTechLeadUsername().isBlank()) {
@@ -273,6 +297,10 @@ public class FastProblemServiceImpl implements FastProblemService {
                 auditLogService.logAction(id, "FIELD_UPDATED", username, "confluenceLink",
                         oldLink, problem.getConfluenceLink());
             }
+        }
+        if (oldBtbTechLead == null ? problem.getBtbTechLeadUsername() != null : !oldBtbTechLead.equals(problem.getBtbTechLeadUsername())) {
+            auditLogService.logAction(id, "FIELD_UPDATED", username, "btbTechLeadUsername",
+                    oldBtbTechLead, problem.getBtbTechLeadUsername());
         }
 
         FastProblem saved = repository.save(problem);
@@ -328,6 +356,18 @@ public class FastProblemServiceImpl implements FastProblemService {
                 throw new IllegalArgumentException("Only ADMIN can close or reject a ticket from BACKLOG, ASSIGNED, or ACCEPTED");
             }
         }
+        if (currentStatus == TicketStatus.ACCEPTED && targetStatus == TicketStatus.IN_PROGRESS) {
+            User user = userRepository.findByUsernameIgnoreCase(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+            if (user.getRole() != UserRole.ADMIN) {
+                throw new IllegalArgumentException("Only ADMIN can move ticket from ACCEPTED to IN_PROGRESS");
+            }
+        }
+        if (currentStatus == TicketStatus.ACCEPTED
+                && targetStatus == TicketStatus.IN_PROGRESS
+                && (problem.getBtbTechLeadUsername() == null || problem.getBtbTechLeadUsername().isBlank())) {
+            throw new IllegalArgumentException("BTB Tech Lead must be assigned before moving ticket from ACCEPTED to IN_PROGRESS");
+        }
 
         String oldStatus = currentStatus.name();
         problem.setStatus(targetStatus);
@@ -359,6 +399,9 @@ public class FastProblemServiceImpl implements FastProblemService {
         FastProblem saved = repository.save(problem);
 
         auditLogService.logAction(id, "STATUS_CHANGED", username, "status", oldStatus, targetStatus.name());
+        if (targetStatus == TicketStatus.ACCEPTED) {
+            sendAcceptedTicketNotifications(saved, username);
+        }
 
         return mapper.toResponse(saved);
     }
@@ -512,6 +555,91 @@ public class FastProblemServiceImpl implements FastProblemService {
 
     private double calculatePriorityScore(int userImpactCount) {
         return (userImpactCount * USER_IMPACT_WEIGHT) + (DEFAULT_APP_CRITICALITY * APP_CRITICALITY_WEIGHT);
+    }
+
+    private List<UserGroup> resolveUserGroups(List<Long> requestedIds) {
+        if (requestedIds == null || requestedIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = requestedIds.stream().filter(id -> id != null && id > 0).distinct().toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        List<UserGroup> groups = userGroupRepository.findAllById(ids);
+        Set<Long> foundIds = groups.stream().map(UserGroup::getId).collect(Collectors.toSet());
+        List<Long> missing = ids.stream().filter(id -> !foundIds.contains(id)).toList();
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("Invalid impactedUserGroupIds: " + missing);
+        }
+        return groups;
+    }
+
+    private String normalizeOptionalText(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void sendAcceptedTicketNotifications(FastProblem problem, String username) {
+        Map<String, String> settings = appSettingsService.getSettings(false).getSettings();
+        boolean notificationEnabled = "true".equalsIgnoreCase(settings.get("acceptedTicketEmailEnabled"));
+        if (!notificationEnabled) {
+            auditLogService.logAction(problem.getId(), "ACCEPTED_NOTIFICATION", username,
+                    "acceptedTicketEmailEnabled", "false", "SKIPPED_DISABLED");
+            return;
+        }
+        List<User> candidates = resolveAcceptedNotificationRecipients(problem);
+        if (candidates.isEmpty()) {
+            auditLogService.logAction(problem.getId(), "ACCEPTED_NOTIFICATION", username,
+                    "acceptedTicketEmailEnabled", "true", "SKIPPED_NO_RECIPIENTS");
+            return;
+        }
+
+        int sent = 0;
+        int failed = 0;
+        Set<String> dedupeEmails = new LinkedHashSet<>();
+        String subject = "FAST Ticket #" + problem.getId() + " accepted: " + problem.getTitle();
+        String body = "<h3>FAST Ticket Accepted</h3>"
+                + "<p>Ticket <strong>#" + problem.getId() + "</strong> has moved to <strong>ACCEPTED</strong>.</p>"
+                + "<p><strong>Title:</strong> " + escapeHtml(problem.getTitle()) + "</p>"
+                + "<p>Please review and coordinate technical follow-up. Assign a BTB Tech Lead before moving to IN_PROGRESS.</p>";
+        for (User candidate : candidates) {
+            if (candidate == null || candidate.getEmail() == null || candidate.getEmail().isBlank()) {
+                continue;
+            }
+            String email = candidate.getEmail().trim().toLowerCase();
+            if (!dedupeEmails.add(email)) {
+                continue;
+            }
+            try {
+                if (emailService.sendEmail(candidate.getEmail(), subject, body)) {
+                    sent++;
+                } else {
+                    failed++;
+                }
+            } catch (Exception ex) {
+                failed++;
+            }
+        }
+        String status = "SENT:" + sent + ",FAILED:" + failed;
+        auditLogService.logAction(problem.getId(), "ACCEPTED_NOTIFICATION", username,
+                "acceptedTicketEmailEnabled", "true", status);
+    }
+
+    private List<User> resolveAcceptedNotificationRecipients(FastProblem problem) {
+        List<Long> applicationIds = problem.getApplications() == null ? List.of()
+                : problem.getApplications().stream()
+                .map(Application::getId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        if (!applicationIds.isEmpty()) {
+            Set<User> matched = userRepository.findTechLeadsByApplicationIds(UserRole.TECH_LEAD, applicationIds);
+            if (!matched.isEmpty()) {
+                return new ArrayList<>(matched);
+            }
+        }
+        return userRepository.findByRoleInAndActiveTrue(List.of(UserRole.TECH_LEAD));
     }
 
     private PagedResponse<FastProblemResponse> toPagedResponse(Page<FastProblem> page) {

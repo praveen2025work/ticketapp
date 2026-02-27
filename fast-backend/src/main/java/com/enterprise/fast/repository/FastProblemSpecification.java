@@ -31,7 +31,7 @@ public final class FastProblemSpecification {
     public static Specification<FastProblem> withFilters(String keyword, String regionCode, String classification,
                                                         String application, LocalDate fromDate, LocalDate toDate,
                                                         String statusFilter) {
-        return withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, statusFilter, null, null, null, null, null);
+        return withFilters(keyword, regionCode, classification, application, fromDate, toDate, null, null, statusFilter, null, null, null, null, null, null);
     }
 
     /** Same as above with optional resolvedDate range for period metrics (weekly/monthly). */
@@ -39,20 +39,23 @@ public final class FastProblemSpecification {
                                                         String application, LocalDate fromDate, LocalDate toDate,
                                                         LocalDate resolvedFrom, LocalDate resolvedTo,
                                                         String statusFilter) {
-        return withFilters(keyword, regionCode, classification, application, fromDate, toDate, resolvedFrom, resolvedTo, statusFilter, null, null, null, null, null);
+        return withFilters(keyword, regionCode, classification, application, fromDate, toDate, resolvedFrom, resolvedTo, statusFilter, null, null, null, null, null, null);
     }
 
     /** Full filters including RAG, Age, Impact, Priority for ticket list. */
     public static Specification<FastProblem> withFilters(String keyword, String regionCode, String classification,
                                                         String application, LocalDate fromDate, LocalDate toDate,
                                                         LocalDate resolvedFrom, LocalDate resolvedTo,
-                                                        String statusFilter, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority) {
+                                                        String statusFilter, String ragStatus, Integer ageMin, Integer ageMax, Integer minImpact, Integer priority, Long impactedUserGroupId) {
         return (root, query, cb) -> {
             if (regionCode != null && !regionCode.isBlank()) {
                 query.distinct(true);
             }
             if (application != null && !application.isBlank()) {
                 query.distinct(true); // applications join can produce multiple rows per ticket
+            }
+            if (impactedUserGroupId != null && impactedUserGroupId > 0) {
+                query.distinct(true); // user groups join can produce multiple rows per ticket
             }
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("deleted"), false));
@@ -173,6 +176,10 @@ public final class FastProblemSpecification {
             }
             if (priority != null && priority >= 1 && priority <= 5) {
                 predicates.add(cb.equal(root.get("priority"), priority));
+            }
+            if (impactedUserGroupId != null && impactedUserGroupId > 0) {
+                var groupJoin = root.join("userGroups", JoinType.INNER);
+                predicates.add(cb.equal(groupJoin.get("id"), impactedUserGroupId));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
