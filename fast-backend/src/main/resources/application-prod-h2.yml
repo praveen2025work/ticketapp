@@ -1,4 +1,7 @@
 # Prod-H2: persistent file-based H2 (prod-style without Oracle).
+# Defaults in this profile are set for unified deployment:
+# - Spring serves UI + API on one port (default 5173)
+# - AD auth mode enabled (no BAM flow)
 # Customize via environment variables:
 #   H2_DATABASE_PATH  - DB file path (default: ./data/fastdb), e.g. /var/lib/fast/data/fastdb
 #   H2_SCHEMA        - Schema name (default: FAST). Schema is auto-created on first connect.
@@ -6,11 +9,13 @@
 #   H2_PASSWORD      - DB password (default: empty). Set for production.
 # For first-time setup, run seed-prod-h2-users.sql once; do not use sql.init.mode: always.
 #
-# LDAP → users table: Username is taken from X-Authenticated-User, REMOTE_USER, or
-# X-Remote-User (domain prefix like DOMAIN\user is stripped). Lookup is by users.username
-# (case-insensitive). If found and active → role/fullName/region from users; if not
-# found → READ_ONLY. Populate admin data via db/seed-prod-h2-users.sql (replace
-# placeholder usernames with your LDAP usernames).
+server:
+  port: ${SERVER_PORT:5173}
+
+app:
+  auth:
+    mode: ad
+
 spring:
   datasource:
     url: jdbc:h2:file:${H2_DATABASE_PATH:./data/fastdb};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS ${H2_SCHEMA:FAST}\;SET SCHEMA ${H2_SCHEMA:FAST}
