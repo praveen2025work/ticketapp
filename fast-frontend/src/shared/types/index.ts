@@ -60,6 +60,50 @@ export interface UserGroupRef {
   updatedDate?: string | null;
 }
 
+export interface InterviewScheduleEntry {
+  id?: number | null;
+  timeSlot: string;
+  businessFunction?: string | null;
+  applicationsUsed?: string | null;
+  processImprovements?: string | null;
+  techIssuesToResolve?: string | null;
+  ticketRaised?: string | null;
+}
+
+export interface InterviewSchedule {
+  id: number;
+  businessArea?: string | null;
+  pcDirector?: string | null;
+  productController?: string | null;
+  namedPnls?: string | null;
+  location?: string | null;
+  interviewedBy?: string | null;
+  interviewDate: string;
+  createdBy: string;
+  updatedBy?: string | null;
+  createdDate: string;
+  updatedDate: string;
+  entries: InterviewScheduleEntry[];
+}
+
+export interface InterviewScheduleRequest {
+  businessArea?: string;
+  pcDirector?: string;
+  productController?: string;
+  namedPnls?: string;
+  location?: string;
+  interviewedBy?: string;
+  interviewDate: string;
+  entries: Array<{
+    timeSlot: string;
+    businessFunction?: string;
+    applicationsUsed?: string;
+    processImprovements?: string;
+    techIssuesToResolve?: string;
+    ticketRaised?: string;
+  }>;
+}
+
 // Response Types
 export interface FastProblem {
   id: number;

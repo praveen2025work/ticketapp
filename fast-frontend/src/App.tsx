@@ -14,6 +14,7 @@ import UpstreamPage from './pages/UpstreamPage';
 import KnowledgeBasePage from './pages/KnowledgeBasePage';
 import AdminPage from './pages/AdminPage';
 import StarterGuidePage from './pages/StarterGuidePage';
+import InterviewSchedulesPage from './pages/InterviewSchedulesPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="tickets/:id/edit" element={<EditTicketPage />} />
         <Route path="approvals" element={<ApprovalQueuePage />} />
         <Route path="upstream" element={<UpstreamPage />} />
+        <Route path="interviews" element={<InterviewSchedulesPage />} />
         <Route path="knowledge" element={<KnowledgeBasePage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="audit" element={<Navigate to="/admin?tab=audit" replace />} />

@@ -534,6 +534,163 @@ AND NOT EXISTS (
     SELECT 1 FROM fast_problem_user_group x WHERE x.fast_problem_id = fp.id AND x.user_group_id = ug.id
 );
 
+-- Sample interview schedule sheet (Product Control)
+DELETE FROM interview_schedule_entry
+WHERE interview_schedule_id IN (
+    SELECT id
+    FROM interview_schedule
+    WHERE business_area = 'Rates'
+      AND interviewed_by = 'Thenmozi'
+      AND interview_date = TRUNC(SYSDATE - 1)
+);
+
+DELETE FROM interview_schedule_entry
+WHERE interview_schedule_id IN (
+    SELECT id
+    FROM interview_schedule
+    WHERE business_area = 'Finance Control'
+      AND interviewed_by = 'Thenmozi'
+      AND interview_date = TRUNC(SYSDATE - 2)
+);
+
+DELETE FROM interview_schedule
+WHERE business_area = 'Rates'
+  AND interviewed_by = 'Thenmozi'
+  AND interview_date = TRUNC(SYSDATE - 1);
+
+DELETE FROM interview_schedule
+WHERE business_area = 'Finance Control'
+  AND interviewed_by = 'Thenmozi'
+  AND interview_date = TRUNC(SYSDATE - 2);
+
+INSERT INTO interview_schedule (
+    business_area,
+    pc_director,
+    product_controller,
+    named_pnls,
+    location,
+    interviewed_by,
+    interview_date,
+    created_by,
+    updated_by,
+    created_date,
+    updated_date
+) VALUES (
+    'Rates',
+    'Lakshamana',
+    'Suresh',
+    'Rates Spot; Rates Forward',
+    'London',
+    'Thenmozi',
+    TRUNC(SYSDATE - 1),
+    'admin',
+    'admin',
+    SYSTIMESTAMP - INTERVAL '1' DAY,
+    SYSTIMESTAMP
+);
+
+INSERT INTO interview_schedule (
+    business_area,
+    pc_director,
+    product_controller,
+    named_pnls,
+    location,
+    interviewed_by,
+    interview_date,
+    created_by,
+    updated_by,
+    created_date,
+    updated_date
+) VALUES (
+    'Finance Control',
+    'Lakshamana',
+    'praveen',
+    'Rates Options; Rates Swaps',
+    'New York',
+    'Thenmozi',
+    TRUNC(SYSDATE - 2),
+    'admin',
+    'admin',
+    SYSTIMESTAMP - INTERVAL '2' DAY,
+    SYSTIMESTAMP
+);
+
+INSERT INTO interview_schedule_entry (
+    interview_schedule_id,
+    time_slot,
+    display_order,
+    business_function,
+    applications_used,
+    process_improvements,
+    tech_issues_to_resolve,
+    ticket_raised
+)
+SELECT s.id, v.time_slot, v.display_order, v.business_function, v.applications_used, v.process_improvements, v.tech_issues_to_resolve, v.ticket_raised
+FROM interview_schedule s
+JOIN (
+    SELECT '08:00' AS time_slot, 0 AS display_order, 'Morning controls check' AS business_function, 'MOTIF; RecFactory' AS applications_used, 'Automate checklist reminders' AS process_improvements, 'Manual refresh needed for overnight feeds' AS tech_issues_to_resolve, 'INC-FAST-2008' AS ticket_raised FROM dual
+    UNION ALL SELECT '09:00', 1, 'Trade capture validation', 'SAP; FinPortal', 'Reduce duplicate validation steps', 'Latency in SAP extract', 'INC-FAST-2009' FROM dual
+    UNION ALL SELECT '10:00', 2, 'PnL explain preparation', 'FinPortal; Download Center', 'Template standardization', 'Intermittent CSV format mismatch', 'INC-FAST-2010' FROM dual
+    UNION ALL SELECT '11:00', 3, 'Break / ad-hoc queries', NULL, NULL, NULL, NULL FROM dual
+    UNION ALL SELECT '12:00', 4, 'Midday reconciliation', 'SAP; Workflow Engine', 'Auto-match more low value breaks', 'Exception queue timeout', 'INC-FAST-2011' FROM dual
+    UNION ALL SELECT '13:00', 5, 'Variance investigation', 'RecFactory; FAS', 'Better issue categorization', 'Reference data delay', NULL FROM dual
+    UNION ALL SELECT '14:00', 6, 'Product control sign-off prep', 'FinPortal', 'Pre-populate sign-off commentary', NULL, NULL FROM dual
+    UNION ALL SELECT '15:00', 7, 'Data quality checks', 'Download Center', 'Add proactive DQ alerts', 'False-positive DQ alerts', 'INC-FAST-2012' FROM dual
+    UNION ALL SELECT '16:00', 8, 'Finance control review', 'SAP', 'Consolidate reviewer notes', NULL, NULL FROM dual
+    UNION ALL SELECT '17:00', 9, 'Exception management', 'Workflow Engine', 'Escalation matrix optimization', 'Ticket ownership not auto-assigned', 'INC-FAST-2013' FROM dual
+    UNION ALL SELECT '18:00', 10, 'EOD PnL pack finalization', 'FinPortal; Playpen', 'Auto-publish final pack', 'Role sync issue for pack approvers', 'INC-FAST-2014' FROM dual
+    UNION ALL SELECT '19:00', 11, 'Stakeholder updates', 'FinPortal', 'Single-click status summary', NULL, NULL FROM dual
+    UNION ALL SELECT '20:00', 12, 'Handover notes', 'FAS', 'Structured handover template', NULL, NULL FROM dual
+    UNION ALL SELECT '21:00', 13, 'Close of day checks', 'Workflow Engine', 'Auto-close completed checks', 'Delayed close confirmation events', 'INC-FAST-2015' FROM dual
+) v ON 1 = 1
+WHERE s.business_area = 'Rates'
+  AND s.interviewed_by = 'Thenmozi'
+  AND s.interview_date = TRUNC(SYSDATE - 1)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM interview_schedule_entry e
+      WHERE e.interview_schedule_id = s.id
+        AND e.time_slot = v.time_slot
+  );
+
+INSERT INTO interview_schedule_entry (
+    interview_schedule_id,
+    time_slot,
+    display_order,
+    business_function,
+    applications_used,
+    process_improvements,
+    tech_issues_to_resolve,
+    ticket_raised
+)
+SELECT s.id, v.time_slot, v.display_order, v.business_function, v.applications_used, v.process_improvements, v.tech_issues_to_resolve, v.ticket_raised
+FROM interview_schedule s
+JOIN (
+    SELECT '08:00' AS time_slot, 0 AS display_order, 'SOD finance controls' AS business_function, 'FAS; FinPortal' AS applications_used, 'Auto-publish control checklist' AS process_improvements, 'Approval role mismatch in morning run' AS tech_issues_to_resolve, 'INC-FAST-2101' AS ticket_raised FROM dual
+    UNION ALL SELECT '09:00', 1, 'Balance confirmations', 'MOTIF; SAP', 'Template with mandatory comments', 'Slow response from SAP balance endpoint', 'INC-FAST-2102' FROM dual
+    UNION ALL SELECT '10:00', 2, 'Exception triage', 'Workflow Engine', 'Priority tags for control breaks', 'Ticket assignment delays for OPS', 'INC-FAST-2103' FROM dual
+    UNION ALL SELECT '11:00', 3, 'Issue follow-up', 'FinPortal', 'Single owner view for escalations', NULL, NULL FROM dual
+    UNION ALL SELECT '12:00', 4, 'Midday finance review', 'SAP; Download Center', 'Reduce manual export handling', 'Intermittent export timeout', 'INC-FAST-2104' FROM dual
+    UNION ALL SELECT '13:00', 5, 'PnL commentary drafting', 'FinPortal', 'Reusable commentary snippets', NULL, NULL FROM dual
+    UNION ALL SELECT '14:00', 6, 'Control attestations', 'FAS; Workflow Engine', 'Inline evidence upload', 'Attachment upload fails for some users', 'INC-FAST-2105' FROM dual
+    UNION ALL SELECT '15:00', 7, 'Reconciliation reruns', 'RecFactory', 'Auto-rerun failed jobs', 'Manual rerun required after timeout', 'INC-FAST-2106' FROM dual
+    UNION ALL SELECT '16:00', 8, 'Approver handoff', 'FinPortal', 'One-click approver summary', NULL, NULL FROM dual
+    UNION ALL SELECT '17:00', 9, 'Open issue governance', 'Workflow Engine; FAS', 'SLA-based queue grouping', 'SLA alert triggers late', 'INC-FAST-2107' FROM dual
+    UNION ALL SELECT '18:00', 10, 'Pre-EOD checks', 'SAP; FinPortal', 'Auto-validate EOD readiness', NULL, NULL FROM dual
+    UNION ALL SELECT '19:00', 11, 'Final control review', 'FAS', 'Consolidated control status board', NULL, NULL FROM dual
+    UNION ALL SELECT '20:00', 12, 'Handover prep', 'Download Center', 'Standardize handover output', 'CSV column order drift', 'INC-FAST-2108' FROM dual
+    UNION ALL SELECT '21:00', 13, 'EOD close', 'Workflow Engine', 'Auto-close non-open exceptions', 'Close event delay in queue', 'INC-FAST-2109' FROM dual
+) v ON 1 = 1
+WHERE s.business_area = 'Finance Control'
+  AND s.interviewed_by = 'Thenmozi'
+  AND s.interview_date = TRUNC(SYSDATE - 2)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM interview_schedule_entry e
+      WHERE e.interview_schedule_id = s.id
+        AND e.time_slot = v.time_slot
+  );
+
 UPDATE fast_problem SET rag_status = 'A' WHERE ticket_age_days > 15 AND ticket_age_days <= 20 AND deleted = 0;
 UPDATE fast_problem SET rag_status = 'R' WHERE ticket_age_days > 20 AND deleted = 0;
 

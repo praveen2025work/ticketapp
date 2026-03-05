@@ -15,8 +15,12 @@
   5. Keep your SQL idempotent (`MERGE` or guarded `INSERT`) because `always` executes on each start.
   6. After first successful load, remove those overrides and run with the default `spring.sql.init.mode=never`.
   7. For existing schemas upgrading to DQ/User Group support, run **migration-add-dq-user-groups.sql**.
+  8. For existing schemas adding interview schedule sheets, run **migration-add-interview-schedules.sql**.
+  9. For existing schemas adding interview entry extra columns (applications/process improvements/issues/ticket), run **migration-add-interview-entry-columns.sql**.
 - **Dev / Prod (Oracle):** Use **init-oracle.sql** — tables only. Run once per schema as schema owner. Set `spring.profiles.active=dev` or `prod` and ORACLE_* env vars.
   - Optional demo data seed (users, applications, user groups, assignments, and sample tickets): run **seed-oracle-sample-data.sql**.
   - For existing schemas upgrading to DQ/User Group support, run the Oracle section from **migration-add-dq-user-groups.sql**.
+  - For existing schemas adding interview schedule sheets, run the Oracle section from **migration-add-interview-schedules.sql**.
+  - For existing schemas adding interview entry extra columns, run the Oracle section from **migration-add-interview-entry-columns.sql**.
 
 No migrations. One script per database.

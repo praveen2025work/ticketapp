@@ -53,6 +53,41 @@ CREATE TABLE IF NOT EXISTS user_group (
 CREATE INDEX IF NOT EXISTS idx_user_group_name ON user_group(name);
 CREATE INDEX IF NOT EXISTS idx_user_group_active ON user_group(active);
 
+-- INTERVIEW_SCHEDULE (work-schedule interview sheet header)
+CREATE TABLE IF NOT EXISTS interview_schedule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    business_area VARCHAR(150),
+    pc_director VARCHAR(150),
+    product_controller VARCHAR(150),
+    named_pnls VARCHAR(500),
+    location VARCHAR(150),
+    interviewed_by VARCHAR(150),
+    interview_date DATE,
+    created_by VARCHAR(50) NOT NULL,
+    updated_by VARCHAR(50),
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_interview_schedule_date ON interview_schedule(interview_date);
+CREATE INDEX IF NOT EXISTS idx_interview_schedule_created_date ON interview_schedule(created_date);
+
+-- INTERVIEW_SCHEDULE_ENTRY (08:00-21:00 rows)
+CREATE TABLE IF NOT EXISTS interview_schedule_entry (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    interview_schedule_id BIGINT NOT NULL,
+    time_slot VARCHAR(5) NOT NULL,
+    display_order INTEGER NOT NULL,
+    business_function CLOB,
+    applications_used CLOB,
+    process_improvements CLOB,
+    tech_issues_to_resolve CLOB,
+    ticket_raised CLOB,
+    CONSTRAINT fk_interview_schedule_entry_schedule FOREIGN KEY (interview_schedule_id) REFERENCES interview_schedule(id) ON DELETE CASCADE,
+    CONSTRAINT uq_interview_schedule_entry_slot UNIQUE (interview_schedule_id, time_slot)
+);
+CREATE INDEX IF NOT EXISTS idx_interview_schedule_entry_schedule ON interview_schedule_entry(interview_schedule_id);
+CREATE INDEX IF NOT EXISTS idx_interview_schedule_entry_order ON interview_schedule_entry(interview_schedule_id, display_order);
+
 -- FAST_PROBLEM (no regional_code; regions in fast_problem_region)
 CREATE TABLE IF NOT EXISTS fast_problem (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

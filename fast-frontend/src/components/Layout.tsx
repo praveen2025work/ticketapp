@@ -26,6 +26,7 @@ const navItems = [
   { path: '/tickets/create', label: 'Ticket', icon: 'create' },
   { path: '/approvals', label: 'Approvals' },
   { path: '/upstream', label: 'Upstream' },
+  { path: '/interviews', label: 'Interviews' },
   { path: '/knowledge', label: 'KB' },
   { path: '/admin', label: 'Admin' },
 ];
@@ -42,6 +43,7 @@ export default function Layout() {
   const { enabled: autoRefreshEnabled, setEnabled: setAutoRefreshEnabled, secondsRemaining } = useAutoRefresh();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isInterviewRoute = location.pathname.startsWith('/interviews');
 
   const { data: pendingApprovals = [] } = useQuery<ApprovalRecord[], Error>({
     queryKey: ['approvals', 'pending'],
@@ -199,7 +201,7 @@ export default function Layout() {
           )}
         </div>
       </nav>
-      <main className="max-w-7xl mx-auto px-4 py-6 text-gray-900 dark:text-slate-100">
+      <main className={`${isInterviewRoute ? 'max-w-[96vw]' : 'max-w-7xl'} mx-auto px-4 py-6 text-gray-900 dark:text-slate-100`}>
         <Outlet />
       </main>
     </div>
